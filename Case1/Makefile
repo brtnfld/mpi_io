@@ -1,0 +1,31 @@
+CC = mpicc
+FC = mpif90
+#CC = cc
+#FC = ftn
+
+F90FLAGS = -O3
+
+OBJ =
+OBJF90 = case1.o
+
+all:  case1
+
+case1: $(OBJ) $(OBJF90)
+	$(FC) $(F90FLAGS) $(OBJ) $(OBJF90) -o $@
+
+.SUFFIXES: .o .F90
+
+.F90.o:
+	$(FC) $(F90FLAGS) -c $< -o $@
+
+.SUFFIXES: .o .c
+
+.c.o:
+	$(CC) $(CFLAGS) -c  $< -o $@
+
+clean:
+	rm -f *.o *.mod 
+
+spotless:
+	rm -f *.o *.mod case1 *~ timing datafile.mpio
+
