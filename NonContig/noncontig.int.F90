@@ -76,19 +76,18 @@ PROGRAM noncontig
     CALL MPI_File_write_all(fh, buf, bufsize, MPI_INTEGER, wstatus, ierr);
 ! EXPAND THE FILE
 
-    expand_fs = sizeof(i)*N + 524288 + sb_sz
+    expand_fs = 0
+!    expand_fs = sizeof(i)*N + 524288 + sb_sz
     CALL MPI_Barrier(MPI_COMM_WORLD, ierr)
     t = 0.
     t1 = MPI_Wtime()
 
 ! (1) Expand using MPI IO
     IF(argv .EQ. '1')THEN
-       t2 = MPI_Wtime()
-     !  PRINT*,"option 1"
-      IF(rank.eq.0) &
        call MPI_FILE_GET_SIZE(fh, f_sz, ierr)
     
-    !   CALL MPI_File_set_size(fh, expand_fs, ierr)
+       t2 = MPI_Wtime()
+       CALL MPI_File_set_size(fh, expand_fs, ierr)
        t(2) = MPI_Wtime() - t2;
     ENDIF
 
@@ -99,7 +98,6 @@ PROGRAM noncontig
  ! or (2) Expand using POSIX
     IF( argv .EQ. '2' .AND. rank.EQ.size-1)THEN
        t2 = MPI_Wtime()
-     !  PRINT*,"option 2"
        i = ctrunc(expand_fs)
        t(2) = MPI_Wtime() - t2;
     ENDIF
@@ -110,6 +108,7 @@ PROGRAM noncontig
 
     IF (rank .EQ. (size-1)) THEN
        INQUIRE(file="timing", exist=exist)
+       WRITE(*, *) "TOTAL,    MPI_File_set_size,    MPI_File_close"
        PRINT*,t
        IF (exist) THEN
           OPEN(12, file="timing", status="old", position="append", action="write")
