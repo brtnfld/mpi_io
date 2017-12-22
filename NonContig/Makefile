@@ -1,7 +1,12 @@
-CC = mpicc
-FC = mpif90
-CC = cc
-FC = ftn
+HOST := $(shell hostname)
+
+ifeq ($(findstring edison, $(HOST)),edison)
+ CC = cc
+ FC = ftn
+else
+ CC = mpicc
+ FC = mpif90
+endif
 
 F90FLAGS = -O3
 
