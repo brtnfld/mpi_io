@@ -19,9 +19,9 @@ PROGRAM case1
 ! 2**27
 !  INTEGER(KIND=int64), PARAMETER :: N = 67108864_int64 
 ! 2**30
-!  INTEGER(KIND=int64), PARAMETER :: N=1073741824_int64
+  INTEGER(KIND=int64), PARAMETER :: N=1073741824_int64
 ! 2**31
-  INTEGER(KIND=int64), PARAMETER :: N=2147483648_int64
+!  INTEGER(KIND=int64), PARAMETER :: N=2147483648_int64
 ! 2**32
 !  INTEGER(KIND=int64), PARAMETER :: N=4294967296_int64
 !
@@ -101,8 +101,8 @@ PROGRAM case1
 
   DO k = 1, 4
 
-!    A.1) WRITE META-DATA, WRITE 512 INDIVIUAL WRITES, EACH INDIVIDUAL WRITE IS WRITTEN 
-!         BY A SEPERATE PROCESS 
+     ! A.1) WRITE META-DATA, WRITE 512 INDIVIUAL WRITES, EACH INDIVIDUAL WRITE IS WRITTEN 
+     !      BY A SEPERATE PROCESS 
 
 
      DO i = 1, 512 ! writes of metadata  
@@ -130,14 +130,15 @@ PROGRAM case1
         DEALLOCATE(buf)
         
      ENDDO
+
+     ! A.2) WRITE RAW DATA COLLECTIVELY, ALL PROCESSES CONTRIBUTE TO WRITING A SECTION
+     !      OF THE DATA SET.
+
+     bufsize = N/nprocs
+
+     CALL raw(fh, rank, nprocs, bufsize, offset)
      
   ENDDO
-
-  ! A.2) write raw data collectively
-
-  bufsize = N/nprocs
-
-  CALL raw(fh, rank, nprocs, bufsize, offset)
 
 ! EXPAND THE FILE
 
