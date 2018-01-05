@@ -12,6 +12,17 @@ PROGRAM case2
   use iso_fortran_env
   IMPLICIT NONE
 
+
+  INTERFACE
+     INTEGER FUNCTION ctrunc(a) BIND(C,NAME="ctrunc")
+       USE ISO_C_BINDING
+       USE mpi
+       INTEGER(KIND=MPI_OFFSET_KIND), VALUE :: a
+     END FUNCTION ctrunc
+  END INTERFACE
+
+
+
   INTEGER(KIND=int64), PARAMETER :: MegaB = 2097152_int64
 
 ! 2**20
@@ -64,6 +75,15 @@ PROGRAM case2
 
   IF(rank.EQ.0)  CALL EXECUTE_COMMAND_LINE("rm -f datafile.mpio")
   CALL MPI_Barrier(MPI_COMM_WORLD, ierr)
+
+  k = 0
+  argv=""
+  DO
+     CALL get_command_argument(k, arg)
+     IF (LEN_TRIM(arg) == 0) EXIT
+     argv(1:1) = arg(1:1)
+     k = k + 1
+  END DO
 
   CALL MPI_File_open(MPI_COMM_WORLD, "datafile.mpio",     &
        IOR(MPI_MODE_CREATE,MPI_MODE_WRONLY), &
@@ -133,10 +153,18 @@ PROGRAM case2
   t = 0.
   t1 = MPI_Wtime()
 
+
 ! (1) Expand using MPI IO
-  CALL MPI_FILE_GET_SIZE(fh, f_sz, ierr) 
-  t2 = MPI_Wtime() 
-  CALL MPI_File_set_size(fh, f_sz, ierr)
+  CALL MPI_FILE_GET_SIZE(fh, f_sz, ierr)
+
+  ! Expand using POSIX
+  IF( argv .EQ. '2' .AND. rank.EQ.size-1)THEN
+     t2 = MPI_Wtime()
+     i = ctrunc(f_sz)
+  ELSE 
+     t2 = MPI_Wtime() 
+     CALL MPI_File_set_size(fh, f_sz, ierr)
+  ENDIF
 
   t(2) = MPI_Wtime() - t2;
 

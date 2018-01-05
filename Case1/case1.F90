@@ -101,11 +101,11 @@ PROGRAM case1
 
   DO k = 1, 4
 
-     ! A.1) WRITE META-DATA, WRITE 512 INDIVIUAL WRITES, EACH INDIVIDUAL WRITE IS WRITTEN 
-     !      BY A SEPERATE PROCESS 
+     ! A.1) WRITE META-DATA, WRITE 512 INDIVIDUAL WRITES, EACH INDIVIDUAL 
+     !      WRITE IS WRITTEN BY A SEPARATE PROCESS
 
 
-     DO i = 1, 512 ! writes of metadata  
+     DO i = 1, 512 ! write chunks of metadata  
         
         proc_cnt = proc_cnt + 1
         IF(proc_cnt.GT.nprocs-1) proc_cnt = 0
@@ -131,7 +131,7 @@ PROGRAM case1
         
      ENDDO
 
-     ! A.2) WRITE RAW DATA COLLECTIVELY, ALL PROCESSES CONTRIBUTE TO WRITING A SECTION
+     ! A.2) WRITE RAW DATA COLLECTIVELY; ALL PROCESSES CONTRIBUTE TO WRITING A SECTION
      !      OF THE DATA SET.
 
      bufsize = N/nprocs
