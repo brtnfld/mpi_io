@@ -156,19 +156,27 @@ PROGRAM case2
   CALL MPI_FILE_GET_SIZE(fh, f_sz, ierr)
 
   ! Expand using POSIX
-  IF( argv .EQ. '2' .AND. rank.EQ.size-1)THEN
-     t2 = MPI_Wtime()
-     i = ctrunc(f_sz)
+  IF( argv .EQ. '2')THEN
+     t3 = MPI_Wtime()
+     CALL MPI_File_close(fh, ierr)
+     t(3) = MPI_Wtime() - t3;
+     IF(rank.EQ.size-1)THEN
+        t2 = MPI_Wtime()
+        i = ctrunc(f_sz)
+        t(2) = MPI_Wtime() - t2;
+     ENDIF
   ELSE 
      t2 = MPI_Wtime()
      CALL MPI_File_set_size(fh, f_sz, ierr)
+     t(2) = MPI_Wtime() - t2;
+     
+     t3 = MPI_Wtime()
+     CALL MPI_File_close(fh, ierr)
+     t(3) = MPI_Wtime() - t3;
+
   ENDIF
 
-  t(2) = MPI_Wtime() - t2;
 
-  t3 = MPI_Wtime()
-  CALL MPI_File_close(fh, ierr)
-  t(3) = MPI_Wtime() - t3;
    
   t(1) = MPI_Wtime() - t1;
 
