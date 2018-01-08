@@ -26,6 +26,7 @@ int main() {
   rc = MPI_File_open( MPI_COMM_WORLD, "datafile", MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fdp);
   MPI_File_close( &fdp );
 
+  MPI_Barrier(MPI_COMM_WORLD);
   if( myid == 0) {
 
 #if 0
@@ -33,7 +34,7 @@ int main() {
     fclose(fd);
 #endif
     
-    expand_fs = 33554432;
+    expand_fs = 134217728;
     
     clock_t tic = clock();
     truncate("datafile", expand_fs);
