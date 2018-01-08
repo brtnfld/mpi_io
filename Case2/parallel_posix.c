@@ -13,8 +13,8 @@ static void raw(MPI_File fh, int rank, int nprocs, int bufsize,  MPI_Offset offs
   MPI_Status wstatus;
     
   buf = (int *)malloc(sizeof(int)*bufsize);
-    
-  for(k = 0; k < bufsize; ++k ) {
+
+  for(k = 0; k < bufsize; k++ ) {
     buf[k] = k;
   }
 
@@ -60,7 +60,7 @@ int main() {
   proc_cnt = 0;
   offset = 0;
 
-  for(k = 0; k < sz_superblock; ++k ) {
+  for(k = 0; k < sz_superblock; k++ ) {
     superblock[k] = k;
   }
 
