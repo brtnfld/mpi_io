@@ -46,7 +46,7 @@ PROGRAM case2
   INTEGER, DIMENSION(mpi_status_size) :: wstatus
   INTEGER :: fh,i
   INTEGER, DIMENSION(1:4) :: message
-  INTEGER :: ierr, rank, size
+  INTEGER :: ierr, rank
   
   INTEGER :: filetype, contig
   INTEGER (KIND=MPI_ADDRESS_KIND) :: extent
@@ -60,7 +60,7 @@ PROGRAM case2
   CHARACTER(len=128) :: arg
   INTEGER k
   INTEGER(KIND=MPI_OFFSET_KIND) f_sz
-  INTEGER nranks, nprocs
+  INTEGER nprocs
 
   INTEGER, PARAMETER :: sz_superblock = 2048 ! 8,192 Bytes
   INTEGER*4, DIMENSION(1:sz_superblock) :: superblock
@@ -160,7 +160,7 @@ PROGRAM case2
      t3 = MPI_Wtime()
      CALL MPI_File_close(fh, ierr)
      t(3) = MPI_Wtime() - t3;
-     IF(rank.EQ.size-1)THEN
+     IF(rank.EQ.0)THEN
         t2 = MPI_Wtime()
         i = ctrunc(f_sz)
         t(2) = MPI_Wtime() - t2;
@@ -176,13 +176,11 @@ PROGRAM case2
 
   ENDIF
 
-
-   
   t(1) = MPI_Wtime() - t1;
 
   CALL MPI_Allreduce(MPI_IN_PLACE, t, 3, MPI_DOUBLE_PRECISION, MPI_MAX, MPI_COMM_WORLD, ierr);
 
-  IF (rank .EQ. (nprocs-1)) THEN
+  IF (rank .EQ. 0) THEN
      INQUIRE(file="timing", exist=exist)
      WRITE(*, *) "TOTAL, MPI_File_set_size, MPI_File_close"
      PRINT*,t
