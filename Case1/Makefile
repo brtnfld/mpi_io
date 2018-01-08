@@ -10,7 +10,7 @@ endif
 
 F90FLAGS = -O3
 
-OBJ =
+OBJ = ../NonContig/noncon.o
 OBJF90 = case1.o
 
 all:  case1
@@ -29,8 +29,7 @@ case1: $(OBJ) $(OBJF90)
 	$(CC) $(CFLAGS) -c  $< -o $@
 
 clean:
-	rm -f *.o *.mod 
+	rm -f  ../NonContig/*.o *.o *.mod 
 
 spotless:
-	rm -f *.o *.mod case1 *~ timing datafile.mpio
-
+	rm -f ../NonContig/*.o *.o *.mod case2 *~ timing datafile.mpio

@@ -12,6 +12,14 @@ PROGRAM case1
   use iso_fortran_env
   IMPLICIT NONE
 
+  INTERFACE
+     INTEGER FUNCTION ctrunc(a) BIND(C,NAME="ctrunc")
+       USE ISO_C_BINDING
+       USE mpi
+       INTEGER(KIND=MPI_OFFSET_KIND), VALUE :: a
+     END FUNCTION ctrunc
+  END INTERFACE
+
   INTEGER(KIND=int64), PARAMETER :: MegaB = 2097152_int64
 
 ! 2**20
@@ -36,12 +44,9 @@ PROGRAM case1
 
   INTEGER, DIMENSION(mpi_status_size) :: wstatus
   INTEGER :: fh,i
-  INTEGER, DIMENSION(1:4) :: message
-  INTEGER :: ierr, rank, size
+  INTEGER :: ierr, rank
   
-  INTEGER :: filetype, contig
-  INTEGER (KIND=MPI_ADDRESS_KIND) :: extent
-  INTEGER(KIND=MPI_OFFSET_KIND) :: disp, offset, expand_fs,sb_sz
+  INTEGER(KIND=MPI_OFFSET_KIND) :: offset, sb_sz
   INTEGER, ALLOCATABLE, DIMENSION(:) :: buf
   DOUBLE PRECISION, DIMENSION(1:3) :: t
   DOUBLE PRECISION :: t1, t2, t3
@@ -51,11 +56,10 @@ PROGRAM case1
   CHARACTER(len=128) :: arg
   INTEGER k
   INTEGER(KIND=MPI_OFFSET_KIND) f_sz
-  INTEGER nranks, nprocs
+  INTEGER nprocs
 
   INTEGER, PARAMETER :: sz_superblock = 2048 ! 8,192 Bytes
   INTEGER*4, DIMENSION(1:sz_superblock) :: superblock
-  INTEGER, DIMENSION(:), ALLOCATABLE :: mb_buf
   INTEGER:: proc_cnt
 
   CALL MPI_Init(ierr)
@@ -64,6 +68,15 @@ PROGRAM case1
 
   IF(rank.EQ.0)  CALL EXECUTE_COMMAND_LINE("rm -f datafile.mpio")
   CALL MPI_Barrier(MPI_COMM_WORLD, ierr)
+
+  k = 0
+  argv=""
+  DO
+     CALL get_command_argument(k, arg)
+     IF (LEN_TRIM(arg) == 0) EXIT
+     argv(1:1) = arg(1:1)
+     k = k + 1
+  END DO
 
   CALL MPI_File_open(MPI_COMM_WORLD, "datafile.mpio",     &
        IOR(MPI_MODE_CREATE,MPI_MODE_WRONLY), &
@@ -148,21 +161,34 @@ PROGRAM case1
   t1 = MPI_Wtime()
 
 ! (1) Expand using MPI IO
-  CALL MPI_FILE_GET_SIZE(fh, f_sz, ierr) 
-  t2 = MPI_Wtime() 
-  CALL MPI_File_set_size(fh, f_sz, ierr)
+  CALL MPI_FILE_GET_SIZE(fh, f_sz, ierr)
 
-  t(2) = MPI_Wtime() - t2;
+  ! Expand using POSIX, one process
+  IF( argv .EQ. '2')THEN
+     t3 = MPI_Wtime()
+     CALL MPI_File_close(fh, ierr)
+     t(3) = MPI_Wtime() - t3;
+     IF(rank.EQ.0)THEN
+        t2 = MPI_Wtime()
+        i = ctrunc(f_sz)
+        t(2) = MPI_Wtime() - t2;
+     ENDIF
+  ELSE 
+     t2 = MPI_Wtime()
+     CALL MPI_File_set_size(fh, f_sz, ierr)
+     t(2) = MPI_Wtime() - t2;
+     
+     t3 = MPI_Wtime()
+     CALL MPI_File_close(fh, ierr)
+     t(3) = MPI_Wtime() - t3;
 
-  t3 = MPI_Wtime()
-  CALL MPI_File_close(fh, ierr)
-  t(3) = MPI_Wtime() - t3;
-   
+  ENDIF
+
   t(1) = MPI_Wtime() - t1;
 
   CALL MPI_Allreduce(MPI_IN_PLACE, t, 3, MPI_DOUBLE_PRECISION, MPI_MAX, MPI_COMM_WORLD, ierr);
 
-  IF (rank .EQ. (nprocs-1)) THEN
+  IF (rank .EQ. 0) THEN
      INQUIRE(file="timing", exist=exist)
      WRITE(*, *) "TOTAL, MPI_File_set_size, MPI_File_close"
      PRINT*,t
