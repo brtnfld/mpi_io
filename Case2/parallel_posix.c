@@ -5,8 +5,33 @@
 #include <mpi.h>
 #include<time.h>
 
+static void raw(MPI_File fh, int rank, int nprocs, int bufsize,  MPI_Offset offset) {
+
+  MPI_Offset LOCoffset;
+  int *buf;
+  int k;
+  MPI_Status *wstatus;
+    
+  buf = (int *)malloc(sizeof(int)*bufsize);
+    
+  for(k = 0; k < bufsize; ++k ) {
+    buf[k] = k;
+  }
+
+  LOCoffset = offset + rank*bufsize*sizeof(int);
+
+  MPI_File_set_view(fh, LOCoffset, MPI_INTEGER, MPI_INTEGER, "native", MPI_INFO_NULL);
+  MPI_File_write_all(fh, buf, bufsize, MPI_INTEGER, wstatus);
+
+  offset = offset + bufsize*nprocs*sizeof(int);
+  free(buf);
+  return;
+
+}
+
 int main() {
 
+  int64_t N = 1073741824;
   off_t expand_fs;
   FILE *fd;
   int rc;
@@ -16,6 +41,7 @@ int main() {
   int sz_superblock = 2048;
   int superblock[2048];
   MPI_Status *wstatus;
+  int bufsize;
 
   // Initialize the MPI environment
   MPI_Init(NULL, NULL);
@@ -44,6 +70,12 @@ int main() {
     MPI_File_write_all(fdp, superblock, 0, MPI_INTEGER, wstatus);
   }
 
+  offset = offset + sz_superblock*sizeof(int);
+
+  bufsize = N/nprocs;
+
+  raw(fdp, myid, nprocs, bufsize, offset);  
+
   MPI_File_close( &fdp );
 
   MPI_Barrier(MPI_COMM_WORLD);
@@ -53,8 +85,8 @@ int main() {
     fd=fopen("datafile","w");
     fclose(fd);
 #endif
-    
-    expand_fs = 134217728;
+
+    expand_fs = 4294967296;
     
     clock_t tic = clock();
     truncate("datafile", expand_fs);
