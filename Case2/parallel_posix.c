@@ -9,6 +9,8 @@ int main() {
 
   off_t expand_fs;
   FILE *fd;
+  int rc;
+  MPI_File fdp;
 
   // Initialize the MPI environment
   MPI_Init(NULL, NULL);
@@ -21,10 +23,15 @@ int main() {
   int myid;
   MPI_Comm_rank(MPI_COMM_WORLD, &myid);
 
+  rc = MPI_File_open( MPI_COMM_WORLD, "datafile", MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fdp);
+  MPI_File_close( &fdp );
+
   if( myid == 0) {
 
+#if 0
     fd=fopen("datafile","w");
     fclose(fd);
+#endif
     
     expand_fs = 33554432;
     
