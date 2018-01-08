@@ -10,7 +10,7 @@ static void raw(MPI_File fh, int rank, int nprocs, int bufsize,  MPI_Offset offs
   MPI_Offset LOCoffset;
   int *buf;
   int k;
-  MPI_Status *wstatus;
+  MPI_Status wstatus;
     
   buf = (int *)malloc(sizeof(int)*bufsize);
     
@@ -21,7 +21,7 @@ static void raw(MPI_File fh, int rank, int nprocs, int bufsize,  MPI_Offset offs
   LOCoffset = offset + rank*bufsize*sizeof(int);
 
   MPI_File_set_view(fh, LOCoffset, MPI_INTEGER, MPI_INTEGER, "native", MPI_INFO_NULL);
-  MPI_File_write_all(fh, buf, bufsize, MPI_INTEGER, wstatus);
+  MPI_File_write_all(fh, buf, bufsize, MPI_INTEGER, &wstatus);
 
   offset = offset + bufsize*nprocs*sizeof(int);
   free(buf);
