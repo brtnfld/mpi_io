@@ -13,16 +13,18 @@ static void raw(MPI_File fh, int rank, int nprocs, int bufsize,  MPI_Offset offs
   MPI_Status wstatus;
     
   buf = (int *)malloc(sizeof(int)*bufsize);
+  if (!buf)
+    printf("alloc failed \n");
 
   for(k = 0; k < bufsize; k++ ) {
     buf[k] = k;
   }
-
+#if 0
   LOCoffset = offset + rank*bufsize*sizeof(int);
 
   MPI_File_set_view(fh, LOCoffset, MPI_INTEGER, MPI_INTEGER, "native", MPI_INFO_NULL);
   MPI_File_write_all(fh, buf, bufsize, MPI_INTEGER, &wstatus);
-
+#endif
   offset = offset + bufsize*nprocs*sizeof(int);
   free(buf);
   return;
