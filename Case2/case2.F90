@@ -21,8 +21,6 @@ PROGRAM case2
      END FUNCTION ctrunc
   END INTERFACE
 
-
-
   INTEGER(KIND=int64), PARAMETER :: MegaB = 2097152_int64
 
 ! 2**20
@@ -30,9 +28,9 @@ PROGRAM case2
 ! 2**27
 !  INTEGER(KIND=int64), PARAMETER :: N = 67108864_int64 
 ! 2**30
-!  INTEGER(KIND=int64), PARAMETER :: N=1073741824_int64
+  INTEGER(KIND=int64), PARAMETER :: N=1073741824_int64
 ! 2**31
-  INTEGER(KIND=int64), PARAMETER :: N=2147483648_int64
+!  INTEGER(KIND=int64), PARAMETER :: N=2147483648_int64
 ! 2**32
 !  INTEGER(KIND=int64), PARAMETER :: N=4294967296_int64
 !
@@ -162,7 +160,7 @@ PROGRAM case2
      t2 = MPI_Wtime()
      i = ctrunc(f_sz)
   ELSE 
-     t2 = MPI_Wtime() 
+     t2 = MPI_Wtime()
      CALL MPI_File_set_size(fh, f_sz, ierr)
   ENDIF
 
