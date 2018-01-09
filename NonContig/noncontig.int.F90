@@ -72,8 +72,8 @@ PROGRAM noncontig
     sb_sz = 16*size
 
     offset = sb_sz + rank*bufsize*sizeof(i)
-    CALL MPI_File_set_view(fh, offset, MPI_INTEGER, MPI_INTEGER, "native", MPI_INFO_NULL, ierr);
-    CALL MPI_File_write_all(fh, buf, bufsize, MPI_INTEGER, wstatus, ierr);
+    CALL MPI_File_set_view(fh, offset, MPI_INTEGER, MPI_INTEGER, "native", MPI_INFO_NULL, ierr)
+    CALL MPI_File_write_all(fh, buf, bufsize, MPI_INTEGER, wstatus, ierr)
 ! EXPAND THE FILE
 
     expand_fs = 0
@@ -91,23 +91,23 @@ PROGRAM noncontig
     
        t2 = MPI_Wtime()
        CALL MPI_File_set_size(fh, expand_fs, ierr)
-       t(2) = MPI_Wtime() - t2;
+       t(2) = MPI_Wtime() - t2
     ENDIF
 
     t3 = MPI_Wtime()
     CALL MPI_File_close(fh, ierr)
-    t(3) = MPI_Wtime() - t3;
+    t(3) = MPI_Wtime() - t3
    
  ! or (2) Expand using POSIX
     IF( argv .EQ. '2' .AND. rank .EQ. 0)THEN
        t2 = MPI_Wtime()
        i = ctrunc(expand_fs)
-       t(2) = MPI_Wtime() - t2;
+       t(2) = MPI_Wtime() - t2
     ENDIF
 
-    t(1) = MPI_Wtime() - t1;
+    t(1) = MPI_Wtime() - t1
 
-    CALL MPI_Allreduce(MPI_IN_PLACE, t, 3, MPI_DOUBLE_PRECISION, MPI_MAX, MPI_COMM_WORLD, ierr);
+    CALL MPI_Allreduce(MPI_IN_PLACE, t, 3, MPI_DOUBLE_PRECISION, MPI_MAX, MPI_COMM_WORLD, ierr)
 
     IF (rank .EQ. (size-1)) THEN
        INQUIRE(file="timing", exist=exist)
