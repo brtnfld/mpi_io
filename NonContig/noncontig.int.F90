@@ -79,12 +79,15 @@ PROGRAM noncontig
     expand_fs = 0
 !    expand_fs = sizeof(i)*N + 524288 + sb_sz
     CALL MPI_Barrier(MPI_COMM_WORLD, ierr)
+    CALL MPI_FILE_GET_SIZE(fh, f_sz, ierr)
+
+    expand_fs = f_sz
+
     t = 0.
     t1 = MPI_Wtime()
 
 ! (1) Expand using MPI IO
     IF(argv .EQ. '1')THEN
-       call MPI_FILE_GET_SIZE(fh, f_sz, ierr)
     
        t2 = MPI_Wtime()
        CALL MPI_File_set_size(fh, expand_fs, ierr)
@@ -96,7 +99,7 @@ PROGRAM noncontig
     t(3) = MPI_Wtime() - t3;
    
  ! or (2) Expand using POSIX
-    IF( argv .EQ. '2' .AND. rank.EQ.size-1)THEN
+    IF( argv .EQ. '2' .AND. rank .EQ. 0)THEN
        t2 = MPI_Wtime()
        i = ctrunc(expand_fs)
        t(2) = MPI_Wtime() - t2;
