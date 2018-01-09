@@ -108,7 +108,7 @@ PROGRAM noncontig
 
     CALL MPI_Allreduce(MPI_IN_PLACE, t, 3, MPI_DOUBLE_PRECISION, MPI_MAX, MPI_COMM_WORLD, ierr)
 
-    IF (rank .EQ. (size-1)) THEN
+    IF (rank .EQ. 0) THEN
        INQUIRE(file="timing", exist=exist)
        WRITE(*, *) "TOTAL,    MPI_File_set_size,    MPI_File_close"
        PRINT*,t
