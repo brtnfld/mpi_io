@@ -88,7 +88,6 @@ PROGRAM noncontig
 
 ! (1) Expand using MPI IO
     IF(argv .EQ. '1')THEN
-    
        t2 = MPI_Wtime()
        CALL MPI_File_set_size(fh, expand_fs, ierr)
        t(2) = MPI_Wtime() - t2
