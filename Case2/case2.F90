@@ -110,8 +110,6 @@ PROGRAM case2
      bufsize = N/nprocs
   ENDIF
 
-!  CALL raw(fh, rank, nprocs, bufsize, offset)
-
 ! A) RAW DATA WRITES, 5 SETS
 
   DO k = 1, 5
