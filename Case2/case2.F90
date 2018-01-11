@@ -124,7 +124,7 @@ PROGRAM case2
   ENDDO
 
 ! B) WRITE THE RAW DATA, COMBINE THE FOUR METADATA WRITES INTO ONE. WRITEN BY PROCESS ZERO
-     
+!    EACH PROCESS WRITE 1MB     
   bufsize = 4*MegaB/sizeof(k)/512
         
   ALLOCATE(buf(1:bufsize))
