@@ -12,7 +12,6 @@ PROGRAM case2
   use iso_fortran_env
   IMPLICIT NONE
 
-
   INTERFACE
      INTEGER FUNCTION ctrunc(a) BIND(C,NAME="ctrunc")
        USE ISO_C_BINDING
@@ -21,7 +20,7 @@ PROGRAM case2
      END FUNCTION ctrunc
   END INTERFACE
 
-  INTEGER(KIND=int64), PARAMETER :: MegaB = 2097152_int64
+  INTEGER(KIND=int64), PARAMETER :: MegaB = 134217728_int64 !2097152_int64
 
 ! 2**20
 !  INTEGER(KIND=int64), PARAMETER :: N = 1048576_int64
@@ -117,7 +116,7 @@ PROGRAM case2
 
 ! A) RAW DATA WRITES, 4 SETS
 
-  DO k = 1,5 
+  DO k = 1, -5
 
      ! A.1) WRITE RAW DATA COLLECTIVELY; ALL PROCESSES CONTRIBUTE TO WRITING A SECTION
      !      OF THE DATA SET.
@@ -136,26 +135,30 @@ PROGRAM case2
         
   buf(:) = rank
 
+  IF(rank.LE.1)THEN
+     offset = offset + rank*sizeof(buf)
+  ENDIF
+
   CALL MPI_File_set_view(fh, offset, MPI_INTEGER, MPI_INTEGER, "native", MPI_INFO_NULL, ierr)
-        
-  IF(rank.EQ.0)THEN
+
+  IF(rank.LE.1)THEN
      CALL MPI_File_write_all(fh, buf, bufsize, MPI_INTEGER, wstatus, ierr)
   ELSE
      CALL MPI_File_write_all(fh, buf, 0, MPI_INTEGER, wstatus, ierr)
   ENDIF
 
 ! EXPAND THE FILE
-
 !  expand_fs = sizeof(i)*N + 524288 + sb_sz
+
   CALL MPI_Barrier(MPI_COMM_WORLD, ierr)
   t = 0.
   t1 = MPI_Wtime()
 
 
-! (1) Expand using MPI IO
+! Truncate file
   CALL MPI_FILE_GET_SIZE(fh, f_sz, ierr)
 
-  ! Expand using POSIX
+  ! Expand using POSIX, one process
   IF( argv .EQ. '2')THEN
      t3 = MPI_Wtime()
      CALL MPI_File_close(fh, ierr)
@@ -165,6 +168,7 @@ PROGRAM case2
         i = ctrunc(f_sz)
         t(2) = MPI_Wtime() - t2;
      ENDIF
+  ! Expand using MPI IO
   ELSE 
      t2 = MPI_Wtime()
      CALL MPI_File_set_size(fh, f_sz, ierr)
