@@ -112,7 +112,7 @@ PROGRAM case2
 
 !  CALL raw(fh, rank, nprocs, bufsize, offset)
 
-! A) RAW DATA WRITES, 4 SETS
+! A) RAW DATA WRITES, 5 SETS
 
   DO k = 1, 5
 
