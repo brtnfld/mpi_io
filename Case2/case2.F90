@@ -64,7 +64,6 @@ PROGRAM case2
   INTEGER, PARAMETER :: sz_superblock = 2048 ! 8,192 Bytes
   INTEGER*4, DIMENSION(1:sz_superblock) :: superblock
   INTEGER, DIMENSION(:), ALLOCATABLE :: mb_buf
-  INTEGER:: proc_cnt
 
   CALL MPI_Init(ierr)
   CALL MPI_Comm_size(MPI_COMM_WORLD, nprocs, ierr)
@@ -87,7 +86,6 @@ PROGRAM case2
        MPI_INFO_NULL, fh, ierr)
 
   sb_sz = 0
-  proc_cnt = 0
   offset = 0
 
 ! WRITE OUR PSEUDO SUPERBLOCK COLLECTIVELY,
@@ -95,7 +93,7 @@ PROGRAM case2
 !  DO k = 1, sz_superblock
 !     superblock(k) = k
 !  ENDDO
-!  IF(rank.EQ.proc_cnt)THEN
+!  IF(rank.EQ.0)THEN
 !     CALL MPI_File_write_all(fh, superblock, sz_superblock, MPI_INTEGER, wstatus, ierr)
 !  ELSE
 !     CALL MPI_File_write_all(fh, superblock, 0, MPI_INTEGER, wstatus, ierr)
@@ -116,7 +114,7 @@ PROGRAM case2
 
 ! A) RAW DATA WRITES, 4 SETS
 
-  DO k = 1, -5
+  DO k = 1, 5
 
      ! A.1) WRITE RAW DATA COLLECTIVELY; ALL PROCESSES CONTRIBUTE TO WRITING A SECTION
      !      OF THE DATA SET.
