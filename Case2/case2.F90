@@ -93,15 +93,15 @@ PROGRAM case2
 
 ! WRITE OUR PSEUDO SUPERBLOCK COLLECTIVELY,
 ! ONLY PROC 0 WRITES SOMETHING.
-  DO k = 1, sz_superblock
-     superblock(k) = k
-  ENDDO
-  IF(rank.EQ.proc_cnt)THEN
-     CALL MPI_File_write_all(fh, superblock, sz_superblock, MPI_INTEGER, wstatus, ierr)
-  ELSE
-     CALL MPI_File_write_all(fh, superblock, 0, MPI_INTEGER, wstatus, ierr)
-  ENDIF
-  offset = offset + sz_superblock*sizeof(k)
+!  DO k = 1, sz_superblock
+!     superblock(k) = k
+!  ENDDO
+!  IF(rank.EQ.proc_cnt)THEN
+!     CALL MPI_File_write_all(fh, superblock, sz_superblock, MPI_INTEGER, wstatus, ierr)
+!  ELSE
+!     CALL MPI_File_write_all(fh, superblock, 0, MPI_INTEGER, wstatus, ierr)
+!  ENDIF
+!  offset = offset + sz_superblock*sizeof(k)
 
 ! WRITE THE RAW DATA AFTER THE SUPERBLOCK, ALL PROCESSES CONTRIBUTE
 ! TO WRITING THE DATA
@@ -113,11 +113,11 @@ PROGRAM case2
      bufsize = N/nprocs
   ENDIF
 
-  CALL raw(fh, rank, nprocs, bufsize, offset)
+!  CALL raw(fh, rank, nprocs, bufsize, offset)
 
 ! A) RAW DATA WRITES, 4 SETS
 
-  DO k = 1, 4
+  DO k = 1,5 
 
      ! A.1) WRITE RAW DATA COLLECTIVELY; ALL PROCESSES CONTRIBUTE TO WRITING A SECTION
      !      OF THE DATA SET.
@@ -138,7 +138,7 @@ PROGRAM case2
 
   CALL MPI_File_set_view(fh, offset, MPI_INTEGER, MPI_INTEGER, "native", MPI_INFO_NULL, ierr)
         
-  IF(rank.EQ.proc_cnt)THEN
+  IF(rank.EQ.0)THEN
      CALL MPI_File_write_all(fh, buf, bufsize, MPI_INTEGER, wstatus, ierr)
   ELSE
      CALL MPI_File_write_all(fh, buf, 0, MPI_INTEGER, wstatus, ierr)
