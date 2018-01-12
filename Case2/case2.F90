@@ -20,9 +20,10 @@ PROGRAM case2
      END FUNCTION ctrunc
   END INTERFACE
 
-  INTEGER, PARAMETER :: ndsets = 5
+  INTEGER, PARAMETER :: ndsets = 5 ! Number of raw dataset to write
 
-  INTEGER(KIND=int64), PARAMETER :: MegaB = 134217728_int64 !2097152_int64
+! size of a page in the pagebuffer 
+  INTEGER(KIND=int64), PARAMETER :: MegaB = 1048576_int64
 
 ! 2**20
 !  INTEGER(KIND=int64), PARAMETER :: N = 1048576_int64
@@ -42,20 +43,13 @@ PROGRAM case2
 ! 2**37	
 !  INTEGER(KIND=int64) ,PARAMETER :: 137438953472_int64
 
-! Write 4 large datasets 
-
   INTEGER, DIMENSION(mpi_status_size) :: wstatus
   INTEGER :: fh,i
-  INTEGER, DIMENSION(1:4) :: message
   INTEGER :: ierr, rank
   
-  INTEGER :: filetype, contig
-  INTEGER (KIND=MPI_ADDRESS_KIND) :: extent
-  INTEGER(KIND=MPI_OFFSET_KIND) :: disp, offset, expand_fs, sb_sz
+  INTEGER(KIND=MPI_OFFSET_KIND) :: offset
   INTEGER :: n_pgbuf
   INTEGER, ALLOCATABLE, DIMENSION(:) :: pgbuf
-  DOUBLE PRECISION, DIMENSION(1:3) :: t
-  DOUBLE PRECISION :: t1, t2, t3
   INTEGER :: n_rawbuf
   CHARACTER(len=1) :: argv
   LOGICAL :: exist
@@ -64,10 +58,12 @@ PROGRAM case2
   INTEGER(KIND=MPI_OFFSET_KIND) f_sz
   INTEGER nprocs
 
-  INTEGER, PARAMETER :: sz_superblock = 2048 ! 8,192 Bytes
-  INTEGER*4, DIMENSION(1:sz_superblock) :: superblock
   INTEGER(KIND=int64), DIMENSION(1:2) :: mb_offsets
   INTEGER(KIND=int64) :: mb_size
+
+  ! timing data
+  DOUBLE PRECISION, DIMENSION(1:3) :: t
+  DOUBLE PRECISION :: t1, t2, t3
 
   CALL MPI_Init(ierr)
   CALL MPI_Comm_size(MPI_COMM_WORLD, nprocs, ierr)
@@ -89,11 +85,10 @@ PROGRAM case2
   END DO
 
   ! page buffer size
-  n_pgbuf = 4*MegaB/sizeof(k)/512
+  n_pgbuf = MegaB/sizeof(k)
   ALLOCATE(pgbuf(1:n_pgbuf))
   pgbuf(:) = rank
 
-  sb_sz = 0
   offset = 0
 
   mb_offsets(1) = offset
@@ -106,18 +101,6 @@ PROGRAM case2
        IOR(MPI_MODE_CREATE,MPI_MODE_WRONLY), &
        MPI_INFO_NULL, fh, ierr)
 
-
-! WRITE OUR PSEUDO SUPERBLOCK COLLECTIVELY,
-! ONLY PROC 0 WRITES SOMETHING.
-!  DO k = 1, sz_superblock
-!     superblock(k) = k
-!  ENDDO
-!  IF(rank.EQ.0)THEN
-!     CALL MPI_File_write_all(fh, superblock, sz_superblock, MPI_INTEGER, wstatus, ierr)
-!  ELSE
-!     CALL MPI_File_write_all(fh, superblock, 0, MPI_INTEGER, wstatus, ierr)
-!  ENDIF
-!  offset = offset + sz_superblock*sizeof(k)
 
 ! WRITE THE RAW DATA AFTER THE SUPERBLOCK, ALL PROCESSES CONTRIBUTE
 ! TO WRITING THE DATA
@@ -166,9 +149,6 @@ PROGRAM case2
      CALL MPI_File_set_view(fh, 0, MPI_INTEGER, MPI_INTEGER, "native", MPI_INFO_NULL, ierr)
      CALL MPI_File_write_all(fh, pgbuf, 0, MPI_INTEGER, wstatus, ierr)
   ENDIF
-
-! EXPAND THE FILE
-!  expand_fs = sizeof(i)*N + 524288 + sb_sz
 
   CALL MPI_Barrier(MPI_COMM_WORLD, ierr)
   t = 0.
@@ -225,6 +205,8 @@ END PROGRAM case2
 
 SUBROUTINE raw(fh, rank, nprocs, bufsize, offset)
 
+  ! write the raw data and return the offset at the end of the data
+
     USE MPI
 
     IMPLICIT NONE
@@ -238,10 +220,7 @@ SUBROUTINE raw(fh, rank, nprocs, bufsize, offset)
     INTEGER :: bufsize
     
     ALLOCATE(buf(1:bufsize))
-    
-    DO k = 1, bufsize
-       buf(k) = k
-    ENDDO
+    buf = k
     
     LOCoffset = offset + rank*bufsize*sizeof(k)
     CALL MPI_File_set_view(fh, LOCoffset, MPI_INTEGER, MPI_INTEGER, "native", MPI_INFO_NULL, ierr)
