@@ -164,6 +164,27 @@ main (int argc, char *argv[] )
       //purge
     //#endif
 
+    /* Try to clear the cache */
+
+/*     system("dd if=/dev/zero of=bigfile bs=1M count=200"); */
+/*     system("cat bigfile > /dev/null"); */
+
+    /*system("perl -e '$a = \"A\" x 1_000_000_000; sleep 5' &");*/
+    //  system("find / -type f -exec cat {} >>/dev/null ;");
+/*     FILE * fp; */
+/*     /\* open the file for writing*\/ */
+/*     fp = fopen ("scr","wb"); */
+/*     fwrite(wdata, sizeof(*wdata),NROWS*NVL,fp); */
+/*     fwrite(wdata, sizeof(*wdata),NROWS*NVL,fp); */
+/*     fwrite(wdata, sizeof(*wdata),NROWS*NVL,fp); */
+/*     fwrite(wdata, sizeof(*wdata),NROWS*NVL,fp); */
+/*     system("cp scr scr2"); */
+    // fread(wdata, sizeof(*wdata),NROWS*NVL,fp);
+    //  printf("%d\n", *(wdata + 1*NVL + 1));
+    
+/*     fclose(fp); */
+
+
 #if 1
     /*
      * Open file and dataset.
@@ -208,6 +229,10 @@ main (int argc, char *argv[] )
         printf (" }\n");
     }
 #endif
+
+
+    
+
     /*
      * Close and release resources.  Note we must still free the
      * top-level pointer "rdataVL", as H5Dvlen_reclaim only frees the
