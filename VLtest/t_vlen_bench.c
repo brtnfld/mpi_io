@@ -157,17 +157,10 @@ main (int argc, char *argv[] )
      * malloc().
      */
 
-    //#if 0 // linux
-      //sync; echo 3 > /proc/sys/vm/drop_caches 
-    //
-    //#else // mac
-      //purge
-    //#endif
-
     /* Try to clear the cache */
 
-/*     system("dd if=/dev/zero of=bigfile bs=1M count=200"); */
-/*     system("cat bigfile > /dev/null"); */
+    //  system("dd if=/dev/zero of=bigfile bs=1M count=100000");
+    //system("cat bigfile > /dev/null");
 
     /*system("perl -e '$a = \"A\" x 1_000_000_000; sleep 5' &");*/
     //  system("find / -type f -exec cat {} >>/dev/null ;");
