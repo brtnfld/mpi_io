@@ -13,7 +13,9 @@ do
  rm -f VL_timing.txt
  for i in `seq 1 $nt`
   do
+    ## echo $RUN a.out $j
     $RUN a.out $j
+    sleep 5
   done
   perl -lane 'for $c (0..$#F){$t[$c] += $F[$c]}; END{for $c (0..$#t){print $t[$c]/$.}}' VL_timing.txt >> $j
 done
