@@ -43,7 +43,7 @@ main (int argc, char *argv[] )
     hsize_t NROWS = 2048;
     hsize_t NVL = 4096;
     struct timeval  tic, toc;
-
+    hid_t   plist_id;
     /*
      * Initialize variable-length data.  wdataVL[0] is a countdown of
      * length NVL
@@ -70,7 +70,9 @@ main (int argc, char *argv[] )
     /*
      * Create a new file using the default properties.
      */
-    file = H5Fcreate (FILENAME, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+    plist_id = H5Pcreate(H5P_FILE_ACCESS);
+    H5Pset_libver_bounds(plist_id, H5F_LIBVER_LATEST, H5F_LIBVER_LATEST);
+    file = H5Fcreate (FILENAME, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id);
 
     /*
      * Create variable-length datatype for file and memory.
