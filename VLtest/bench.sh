@@ -6,9 +6,9 @@ if [ "$HOST" == 'jelly' ];then
     RUN="$HOME/packages/nocache/nocache"
 fi
 
-nt=10
+nt=8
 ##for j in 4096 8192 16384 32768 65536 131072 262144
-for j in 1024 ##4096 ###8192 16384 32768 65536 131072 262144
+for j in 4096 8192 16384 32768 65536 
 do
  rm -f VL_timing.txt
  for i in `seq 1 $nt`
