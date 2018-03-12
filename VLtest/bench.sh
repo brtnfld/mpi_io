@@ -8,14 +8,16 @@ fi
 
 nt=10
 ##for j in 4096 8192 16384 32768 65536 131072 262144
-for j in 4096 8192 16384 32768 65536 131072 262144
+for j in 1024 ##4096 ###8192 16384 32768 65536 131072 262144
 do
  rm -f VL_timing.txt
  for i in `seq 1 $nt`
   do
-    ## echo $RUN a.out $j
-    $RUN a.out $j
-    sleep 5
+    $RUN a.out -w $j
+    $RUN a.out -r $j
+    $RUN a.out -wv $j
+    $RUN a.out -rv $j
+    sleep 2
   done
   perl -lane 'for $c (0..$#F){$t[$c] += $F[$c]}; END{for $c (0..$#t){print $t[$c]/$.}}' VL_timing.txt >> $j
 done
