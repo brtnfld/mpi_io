@@ -21,6 +21,7 @@
 #define FILENAME        "h5ex_t_vlen.h5"
 #define DATASET_VL      "DSVL"
 #define DATASET         "DS"
+#define core 67108864
 
 int
 main (int argc, char *argv[] )
@@ -60,7 +61,6 @@ main (int argc, char *argv[] )
         }
     }
     if (argc > 2) {
-      printf("%s \n",argv[2]);
       printf("options: w=%d r=%d vl=%d \n", write, read, vl);
       NROWS = strtoimax(argv[2], NULL, 10);
     }
@@ -80,6 +80,9 @@ main (int argc, char *argv[] )
      * Create a new file using the default properties.
      */
     plist_id = H5Pcreate(H5P_FILE_ACCESS);
+#ifdef core
+    H5Pset_fapl_core(plist_id, core, 1);
+#endif
     H5Pset_libver_bounds(plist_id, H5F_LIBVER_LATEST, H5F_LIBVER_LATEST);
 
     fcpl = H5Pcreate(H5P_FILE_CREATE);
@@ -141,7 +144,11 @@ main (int argc, char *argv[] )
 	wdataVL[j].p = (void *) ptr;
       }
 
-      file = H5Fopen(FILENAME, H5F_ACC_RDWR, H5P_DEFAULT);
+      plist_id = H5Pcreate(H5P_FILE_ACCESS);
+#ifdef core
+    H5Pset_fapl_core(plist_id, core, 1);
+#endif
+      file = H5Fopen(FILENAME, H5F_ACC_RDWR, plist_id);
       dset = H5Dopen(file, DATASET_VL, H5P_DEFAULT);
       memtype = H5Tvlen_create (H5T_NATIVE_INT);
       space = H5Screate_simple (1, dims, NULL);
@@ -165,6 +172,7 @@ main (int argc, char *argv[] )
       
       gettimeofday(&toc, NULL);
       w_vl = (double) (toc.tv_usec - tic.tv_usec) / 1000000 + (double) (toc.tv_sec - tic.tv_sec);
+      H5Pclose(plist_id);
 
     }
  
@@ -173,8 +181,12 @@ main (int argc, char *argv[] )
       for (i = 0; i <  NROWS; i++)
 	for (j = 0; j < NVL; j++)
 	  *(wdata + i*NVL + j) = NVL-j;
-      
-      file = H5Fopen(FILENAME, H5F_ACC_RDWR, H5P_DEFAULT);
+
+      plist_id = H5Pcreate(H5P_FILE_ACCESS);
+#ifdef core
+      H5Pset_fapl_core(plist_id, core, 1);
+#endif
+      file = H5Fopen(FILENAME, H5F_ACC_RDWR, plist_id);
       dset = H5Dopen(file, DATASET, H5P_DEFAULT);
       
       DSsize = H5Dget_storage_size(dset);
@@ -191,6 +203,7 @@ main (int argc, char *argv[] )
       gettimeofday(&toc, NULL);
       
       w = (double) (toc.tv_usec - tic.tv_usec) / 1000000 + (double) (toc.tv_sec - tic.tv_sec);
+      H5Pclose(plist_id);
     }
 
     /*
@@ -225,7 +238,11 @@ main (int argc, char *argv[] )
       /*
        * Open file and dataset.
        */
-      file = H5Fopen (FILENAME, H5F_ACC_RDONLY, H5P_DEFAULT);
+      plist_id = H5Pcreate(H5P_FILE_ACCESS);
+#ifdef core
+      H5Pset_fapl_core(plist_id, core, 1);
+#endif
+      file = H5Fopen (FILENAME, H5F_ACC_RDONLY, plist_id);
       dset = H5Dopen (file, DATASET_VL, H5P_DEFAULT);
       
       /*
@@ -247,8 +264,6 @@ main (int argc, char *argv[] )
        */
       gettimeofday(&tic, NULL);
       status = H5Dread (dset, memtype, H5S_ALL, H5S_ALL, H5P_DEFAULT, rdataVL);
-      gettimeofday(&toc, NULL);
-      r_vl = (double) (toc.tv_usec - tic.tv_usec) / 1000000 + (double) (toc.tv_sec - tic.tv_sec);
 #if DEBUG
       printf("Total %ld MB, VL write time = %f seconds\n", DSsize, r_vl);
       /*
@@ -279,13 +294,20 @@ main (int argc, char *argv[] )
       status = H5Sclose (space);
       status = H5Tclose (memtype);
       status = H5Fclose (file);
+      gettimeofday(&toc, NULL);
+      r_vl = (double) (toc.tv_usec - tic.tv_usec) / 1000000 + (double) (toc.tv_sec - tic.tv_sec);
+      status = H5Pclose (plist_id);
     }
 
     if(read && !vl) {
       /*
        * Open file and dataset.
        */
-      file = H5Fopen (FILENAME, H5F_ACC_RDONLY, H5P_DEFAULT);
+      plist_id = H5Pcreate(H5P_FILE_ACCESS);
+#ifdef core
+      H5Pset_fapl_core(plist_id, core, 1);
+#endif
+      file = H5Fopen (FILENAME, H5F_ACC_RDONLY, plist_id);
       dset = H5Dopen (file, DATASET, H5P_DEFAULT);
 
       /*
@@ -302,8 +324,6 @@ main (int argc, char *argv[] )
        */
       gettimeofday(&tic, NULL);
       status = H5Dread (dset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &rdata[0]);
-      gettimeofday(&toc, NULL);
-      r = (double) (toc.tv_usec - tic.tv_usec) / 1000000 + (double) (toc.tv_sec - tic.tv_sec);
       
       /*
        * Output the variable-length data to the screen.
@@ -327,6 +347,9 @@ main (int argc, char *argv[] )
       status = H5Dclose (dset);
       status = H5Sclose (space);
       status = H5Fclose (file);
+      gettimeofday(&toc, NULL);
+      r = (double) (toc.tv_usec - tic.tv_usec) / 1000000 + (double) (toc.tv_sec - tic.tv_sec);
+      status = H5Pclose (plist_id);
 
     }
 
