@@ -21,7 +21,7 @@
 #define FILENAME        "h5ex_t_vlen.h5"
 #define DATASET_VL      "DSVL"
 #define DATASET         "DS"
-#define core 67108864
+//#define core 67108864
 
 int
 main (int argc, char *argv[] )
