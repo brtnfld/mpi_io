@@ -60,8 +60,8 @@ main (int argc, char *argv[] )
             exit(EXIT_FAILURE);
         }
     }
+    printf("options: w=%d r=%d vl=%d \n", write, read, vl);
     if (argc > 2) {
-      printf("options: w=%d r=%d vl=%d \n", write, read, vl);
       NROWS = strtoimax(argv[2], NULL, 10);
     }
 
@@ -76,16 +76,17 @@ main (int argc, char *argv[] )
     dims2D[0] =NROWS*NVL;
 
 
+    if( write==1 ) {
     /*
      * Create a new file using the default properties.
      */
-    plist_id = H5Pcreate(H5P_FILE_ACCESS);
+      plist_id = H5Pcreate(H5P_FILE_ACCESS);
 #ifdef core
-    H5Pset_fapl_core(plist_id, core, 1);
+      H5Pset_fapl_core(plist_id, core, 1);
 #endif
-    H5Pset_libver_bounds(plist_id, H5F_LIBVER_LATEST, H5F_LIBVER_LATEST);
+      H5Pset_libver_bounds(plist_id, H5F_LIBVER_LATEST, H5F_LIBVER_LATEST);
 
-    fcpl = H5Pcreate(H5P_FILE_CREATE);
+      fcpl = H5Pcreate(H5P_FILE_CREATE);
 
 /* typedef enum H5F_fspace_strategy_t { */
 /*           H5F_FSPACE_STRATEGY_FSM_AGGR = 0, /\* FSM, Aggregators, VFD *\/  */
@@ -95,43 +96,44 @@ main (int argc, char *argv[] )
 /*           H5F_FSPACE_STRATEGY_NTYPES      */
 /*     } H5F_fspace_strategy_t; */
 
-    H5Pset_file_space_strategy(fcpl,H5F_FSPACE_STRATEGY_PAGE,0,(hsize_t)1);
-    H5Pset_file_space_page_size(fcpl, (hsize_t)1024);
-
-    H5Pset_page_buffer_size(plist_id, (size_t)1024, 0, 0);
+      H5Pset_file_space_strategy(fcpl,H5F_FSPACE_STRATEGY_PAGE,0,(hsize_t)1);
+      H5Pset_file_space_page_size(fcpl, (hsize_t)1024);
+      
+      H5Pset_page_buffer_size(plist_id, (size_t)1024, 0, 0);
     
 
-    file = H5Fcreate (FILENAME, H5F_ACC_TRUNC, fcpl, plist_id);
+      file = H5Fcreate (FILENAME, H5F_ACC_TRUNC, fcpl, plist_id);
 
-    /*
-     * Create variable-length datatype for file and memory.
-     */
-    filetype = H5Tvlen_create (H5T_STD_I32LE);
+      /*
+       * Create variable-length datatype for file and memory.
+       */
+      filetype = H5Tvlen_create (H5T_STD_I32LE);
 
-    /*
-     * Create dataspace.  Setting maximum size to NULL sets the maximum
-     * size to be the current size.
-     */
-    space = H5Screate_simple (1, dims, NULL);
+      /*
+       * Create dataspace.  Setting maximum size to NULL sets the maximum
+       * size to be the current size.
+       */
+      space = H5Screate_simple (1, dims, NULL);
 
-    /*
-     * Create the dataset and write the variable-length data to it.
-     */
-    dset = H5Dcreate (file, DATASET_VL, filetype, space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      /*
+       * Create the dataset and write the variable-length data to it.
+       */
+      dset = H5Dcreate (file, DATASET_VL, filetype, space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
-    status = H5Dclose (dset);
-    status = H5Sclose (space);
-    status = H5Tclose (filetype);
+      status = H5Dclose (dset);
+      status = H5Sclose (space);
+      status = H5Tclose (filetype);
+      
+      space = H5Screate_simple (1, dims2D, NULL);
 
-    space = H5Screate_simple (1, dims2D, NULL);
-
-    dset = H5Dcreate (file, DATASET, H5T_NATIVE_INT, space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-    status = H5Dclose (dset);
-    status = H5Fclose (file);
-
-    status = H5Pclose (plist_id);
-    status = H5Pclose (fcpl);
-    
+      dset = H5Dcreate (file, DATASET, H5T_NATIVE_INT, space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      status = H5Dclose (dset);
+      status = H5Fclose (file);
+      
+      status = H5Pclose (plist_id);
+      status = H5Pclose (fcpl);
+    }
+      
     if( (write==1) && (vl==1) ) {
 
       wdataVL = malloc (NROWS * sizeof (hvl_t));
