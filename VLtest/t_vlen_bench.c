@@ -16,6 +16,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 #define DEBUG 0
 #define FILENAME        "h5ex_t_vlen.h5"
@@ -43,11 +44,13 @@ main (int argc, char *argv[] )
     int opt, cnt=0;
     double w_vl=0., w=0., r_vl=0., r=0.;
     hsize_t DSsize;
-    hsize_t NROWS = 2048;
+    hsize_t NROWS = 4096;
     hsize_t NVL = 4096;
     struct timeval  tic, toc;
     hid_t   plist_id, fcpl;
     int write=0,read=0,vl=0;
+    
+    bool vlvl = true;
 
     while ((opt = getopt(argc, argv, "rwv")) != -1) {
         cnt=cnt+1;
@@ -70,11 +73,15 @@ main (int argc, char *argv[] )
      * length NVL
      */
 
-    printf("(NROWS,NVL) = (%ld,%ld)\n",NROWS,NVL);
-
     dims[0] = NROWS;
-    dims2D[0] =NROWS*NVL;
+    if(vlvl)
+      dims[0] = 2*NROWS;
 
+    printf("VL_2D(NROWS,NVL*) = (%ld,%ld)\n", dims[0], NVL);
+
+    dims2D[0] = NROWS*NVL;
+
+    printf("2D(NROWS,NVL) = (%ld,%ld)\n", dims2D[0]/NVL, NVL);
 
     if( write==1 ) {
     /*
@@ -136,14 +143,33 @@ main (int argc, char *argv[] )
       
     if( (write==1) && (vl==1) ) {
 
-      wdataVL = malloc (NROWS * sizeof (hvl_t));
+      wdataVL = malloc (dims[0] * sizeof (hvl_t));
 
-      for (j=0; j<NROWS; j++) {
-	wdataVL[j].len = NVL;
-	ptr = (int *) malloc (wdataVL[j].len * sizeof (int));
-	for (i=0; i<wdataVL[j].len; i++)
-	  ptr[i] = wdataVL[j].len - (size_t)(i);       /* n-1 */
-	wdataVL[j].p = (void *) ptr;
+      if(vlvl) {
+	int nd = dims[0]/2/NVL;
+	int k = 1;
+	for (j=0; j< dims[0]; j++) {
+	  //printf("k = %d \n", k);
+	  for (i=0; i<wdataVL[j].len; i++) {
+	    wdataVL[j].len = k;
+	    ptr = (int *) malloc (wdataVL[j].len * sizeof (int));
+	    ptr[i] = wdataVL[j].len - (size_t)(i);       /* n-1 */
+	    wdataVL[j].p = (void *) ptr;
+	  }
+	  if(j < dims[0]/2 - 2) {
+	    if((j+1)%nd == 0) k++;
+	  } else if(j > dims[0]/2 ) {
+	    if((j+1)%nd == 0) k--;
+	  }
+	}
+      } else {
+	for (j=0; j<dims[0]/2; j++) {
+	  wdataVL[j].len = NVL;
+	  ptr = (int *) malloc (wdataVL[j].len * sizeof (int));
+	  for (i=0; i<wdataVL[j].len; i++)
+	    ptr[i] = wdataVL[j].len - (size_t)(i);       /* n-1 */
+	  wdataVL[j].p = (void *) ptr;
+	}
       }
 
       plist_id = H5Pcreate(H5P_FILE_ACCESS);
