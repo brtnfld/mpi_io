@@ -50,7 +50,7 @@ main (int argc, char *argv[] )
     hid_t   plist_id, fcpl;
     int write=0,read=0,vl=0;
     
-    bool vlvl = true;
+    bool vlvl = false;
 
     while ((opt = getopt(argc, argv, "rwv")) != -1) {
         cnt=cnt+1;
@@ -83,7 +83,7 @@ main (int argc, char *argv[] )
 
     printf("2D(NROWS,NVL) = (%ld,%ld)\n", dims2D[0]/NVL, NVL);
 
-    if( write==1 ) {
+    if( write==1 && !(vl == 1)) {
     /*
      * Create a new file using the default properties.
      */
@@ -149,9 +149,9 @@ main (int argc, char *argv[] )
 	int nd = dims[0]/2/NVL;
 	int k = 1;
 	for (j=0; j< dims[0]; j++) {
-	  //printf("k = %d \n", k);
+	  // printf("k = %d \n", k);
+	  wdataVL[j].len = k;
 	  for (i=0; i<wdataVL[j].len; i++) {
-	    wdataVL[j].len = k;
 	    ptr = (int *) malloc (wdataVL[j].len * sizeof (int));
 	    ptr[i] = wdataVL[j].len - (size_t)(i);       /* n-1 */
 	    wdataVL[j].p = (void *) ptr;
