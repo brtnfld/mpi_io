@@ -149,13 +149,12 @@ main (int argc, char *argv[] )
 	int nd = dims[0]/2/NVL;
 	int k = 1;
 	for (j=0; j< dims[0]; j++) {
-	  // printf("k = %d \n", k);
 	  wdataVL[j].len = k;
+          ptr = (int *) malloc (wdataVL[j].len * sizeof (int));
 	  for (i=0; i<wdataVL[j].len; i++) {
-	    ptr = (int *) malloc (wdataVL[j].len * sizeof (int));
 	    ptr[i] = wdataVL[j].len - (size_t)(i);       /* n-1 */
-	    wdataVL[j].p = (void *) ptr;
 	  }
+          wdataVL[j].p = (void *) ptr;
 	  if(j < dims[0]/2 - 2) {
 	    if((j+1)%nd == 0) k++;
 	  } else if(j > dims[0]/2 ) {
