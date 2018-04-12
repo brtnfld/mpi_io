@@ -13,11 +13,12 @@ lfs setstripe -c 12 -S 16m $WRKDIR
 cd $WRKDIR
 cmd="a.out"
 script="bench.sh"
-cleanup=yes
+##cleanup=yes
 cp $SLURM_SUBMIT_DIR/$cmd .
 cp $SLURM_SUBMIT_DIR/$script .
 ./$script
 cp sum_* $SLURM_SUBMIT_DIR/
+cp file* $SLURM_SUBMIT_DIR/
 cd $SLURM_SUBMIT_DIR
 if [ -n "$cleanup" ]; then
   rm -r -f $WRKDIR

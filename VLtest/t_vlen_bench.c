@@ -50,7 +50,7 @@ main (int argc, char *argv[] )
     hid_t   plist_id, fcpl;
     int write=0,read=0,vl=0;
     
-    bool vlvl = false;
+    bool vlvl = true;
 
     while ((opt = getopt(argc, argv, "rwv")) != -1) {
         cnt=cnt+1;
@@ -104,9 +104,9 @@ main (int argc, char *argv[] )
 /*     } H5F_fspace_strategy_t; */
 
       H5Pset_file_space_strategy(fcpl,H5F_FSPACE_STRATEGY_PAGE,0,(hsize_t)1);
-      H5Pset_file_space_page_size(fcpl, (hsize_t)1024);
+      H5Pset_file_space_page_size(fcpl, (hsize_t)1048576);
       
-      H5Pset_page_buffer_size(plist_id, (size_t)1024, 0, 0);
+      H5Pset_page_buffer_size(plist_id, (size_t)1048576, 0, 0);
     
 
       file = H5Fcreate (FILENAME, H5F_ACC_TRUNC, fcpl, plist_id);
