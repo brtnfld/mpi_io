@@ -102,12 +102,12 @@ main (int argc, char *argv[] )
 /*           H5F_FSPACE_STRATEGY_NONE = 3,     /\* VFD *\/ */
 /*           H5F_FSPACE_STRATEGY_NTYPES      */
 /*     } H5F_fspace_strategy_t; */
-
+#if 1
       H5Pset_file_space_strategy(fcpl,H5F_FSPACE_STRATEGY_PAGE,0,(hsize_t)1);
-      H5Pset_file_space_page_size(fcpl, (hsize_t)1048576);
+      H5Pset_file_space_page_size(fcpl, (hsize_t)(1048576));
       
-      H5Pset_page_buffer_size(plist_id, (size_t)1048576, 0, 0);
-    
+      H5Pset_page_buffer_size(plist_id, (size_t)(8*1048576), 0, 0);
+#endif
 
       file = H5Fcreate (FILENAME, H5F_ACC_TRUNC, fcpl, plist_id);
 
