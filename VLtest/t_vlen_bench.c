@@ -102,12 +102,12 @@ main (int argc, char *argv[] )
 /*           H5F_FSPACE_STRATEGY_NONE = 3,     /\* VFD *\/ */
 /*           H5F_FSPACE_STRATEGY_NTYPES      */
 /*     } H5F_fspace_strategy_t; */
-
+#if 1
       H5Pset_file_space_strategy(fcpl,H5F_FSPACE_STRATEGY_PAGE,0,(hsize_t)1);
-      H5Pset_file_space_page_size(fcpl, (hsize_t)1024);
+      H5Pset_file_space_page_size(fcpl, (hsize_t)(1048576));
       
-      H5Pset_page_buffer_size(plist_id, (size_t)1024, 0, 0);
-    
+      H5Pset_page_buffer_size(plist_id, (size_t)(8*1048576), 0, 0);
+#endif
 
       file = H5Fcreate (FILENAME, H5F_ACC_TRUNC, fcpl, plist_id);
 
@@ -149,13 +149,12 @@ main (int argc, char *argv[] )
 	int nd = dims[0]/2/NVL;
 	int k = 1;
 	for (j=0; j< dims[0]; j++) {
-	  // printf("k = %d \n", k);
 	  wdataVL[j].len = k;
+          ptr = (int *) malloc (wdataVL[j].len * sizeof (int));
 	  for (i=0; i<wdataVL[j].len; i++) {
-	    ptr = (int *) malloc (wdataVL[j].len * sizeof (int));
 	    ptr[i] = wdataVL[j].len - (size_t)(i);       /* n-1 */
-	    wdataVL[j].p = (void *) ptr;
 	  }
+          wdataVL[j].p = (void *) ptr;
 	  if(j < dims[0]/2 - 2) {
 	    if((j+1)%nd == 0) k++;
 	  } else if(j > dims[0]/2 ) {
