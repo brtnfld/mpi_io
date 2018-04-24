@@ -26,7 +26,7 @@ PROGRAM DATASET_BY_COL
   INTEGER, ALLOCATABLE :: data (:,:)  ! Data to write
   INTEGER :: rank = 2 ! Dataset rank 
 
-  REAL*8 :: t1, t2
+  REAL*8 :: t0, t1, t2, t3, t4, t5
 
   INTEGER :: error  ! Error flags
   !
@@ -44,7 +44,7 @@ PROGRAM DATASET_BY_COL
 
 #define DEBUG 0
 
-  depth1 = 16
+  depth1 = 32
   depth2 = 128
 
   comm = MPI_COMM_WORLD
@@ -148,7 +148,7 @@ PROGRAM DATASET_BY_COL
   endif
 #endif
 
-  t1 = MPI_Wtime()
+  t0 = MPI_Wtime()
   CALL h5fcreate_f(filename, H5F_ACC_TRUNC_F, file_id, error, access_prp = plist_id)
   CALL h5pclose_f(plist_id, error)
 
@@ -218,16 +218,19 @@ PROGRAM DATASET_BY_COL
   !
   ! Close the file.
   !
+  t1 = MPI_Wtime()
   CALL h5fclose_f(file_id, error)
+  CALL MPI_BARRIER( MPI_COMM_WORLD, error)
+  t2 = MPI_Wtime() - t1 
 
   !
   ! Close FORTRAN predefined datatypes.
   !
   CALL h5close_f(error)
   CALL MPI_BARRIER( MPI_COMM_WORLD, error)
-  t2 = MPI_Wtime()
+  t3 = MPI_Wtime()
   IF(mpi_rank.EQ.0)THEN
-     WRITE(*,'(f7.4)') t2-t1
+     WRITE(*,'(f7.4)') t3-t0, t2
   ENDIF
 
   !
