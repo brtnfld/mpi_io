@@ -108,7 +108,7 @@ PROGRAM DATASET_BY_COL
   ENDIF
 #endif
   config%metadata_write_strategy = H5AC_MD_W_STRAT_PROC_0_ONLY_F
-  config%metadata_write_strategy = H5AC_MD_W_STRAT_DISTRIBUTED_F
+  !config%metadata_write_strategy = H5AC_MD_W_STRAT_DISTRIBUTED_F
 
   CALL h5pset_mdc_config_f(plist_id,  config, error)
 
@@ -232,7 +232,7 @@ PROGRAM DATASET_BY_COL
   CALL MPI_BARRIER( MPI_COMM_WORLD, error)
   t4 = MPI_Wtime()
   IF(mpi_rank.EQ.0)THEN
-     WRITE(*,'(4(f7.4,1X))') t4-t0, t2, t3, t4
+     WRITE(*,'(4(f7.4,1X))') t4-t0, t2, t3
   ENDIF
 
   !
