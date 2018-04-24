@@ -107,7 +107,8 @@ PROGRAM DATASET_BY_COL
      PRINT*,  config%metadata_write_strategy
   ENDIF
 #endif
-  config%metadata_write_strategy = 0
+  config%metadata_write_strategy = H5AC_MD_W_STRAT_PROC_0_ONLY_F
+  config%metadata_write_strategy = H5AC_MD_W_STRAT_DISTRIBUTED_F
 
   CALL h5pset_mdc_config_f(plist_id,  config, error)
 
@@ -178,7 +179,7 @@ PROGRAM DATASET_BY_COL
   !
   CALL h5pcreate_f(H5P_DATASET_XFER_F, plist_id, error) 
   CALL h5pset_dxpl_mpio_f(plist_id, H5FD_MPIO_COLLECTIVE_F, error)
-
+  t1 = MPI_Wtime()
   DO i = 1, depth1
      WRITE(id1,"(I4.4)") i
      DO j = 1, depth2
@@ -203,6 +204,7 @@ PROGRAM DATASET_BY_COL
         CALL h5dclose_f(dset_id, error)
      ENDDO
   ENDDO
+  t2 = MPI_Wtime() - t1
   !
   ! Close dataspaces.
   !
@@ -221,16 +223,16 @@ PROGRAM DATASET_BY_COL
   t1 = MPI_Wtime()
   CALL h5fclose_f(file_id, error)
   CALL MPI_BARRIER( MPI_COMM_WORLD, error)
-  t2 = MPI_Wtime() - t1 
+  t3 = MPI_Wtime() - t1 
 
   !
   ! Close FORTRAN predefined datatypes.
   !
   CALL h5close_f(error)
   CALL MPI_BARRIER( MPI_COMM_WORLD, error)
-  t3 = MPI_Wtime()
+  t4 = MPI_Wtime()
   IF(mpi_rank.EQ.0)THEN
-     WRITE(*,'(2(f7.4,1X))') t3-t0, t2
+     WRITE(*,'(4(f7.4,1X))') t4-t0, t2, t3, t4
   ENDIF
 
   !
