@@ -230,7 +230,7 @@ PROGRAM DATASET_BY_COL
   CALL MPI_BARRIER( MPI_COMM_WORLD, error)
   t3 = MPI_Wtime()
   IF(mpi_rank.EQ.0)THEN
-     WRITE(*,'(f7.4)') t3-t0, t2
+     WRITE(*,'(2(f7.4,1X))') t3-t0, t2
   ENDIF
 
   !
