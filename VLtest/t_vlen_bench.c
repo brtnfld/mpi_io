@@ -50,7 +50,7 @@ main (int argc, char *argv[] )
     hid_t   plist_id, fcpl;
     int write=0,read=0,vl=0;
     
-    bool vlvl = false;
+    bool vlvl = true;
 
     while ((opt = getopt(argc, argv, "rwv")) != -1) {
         cnt=cnt+1;
