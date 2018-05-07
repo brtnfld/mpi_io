@@ -68,8 +68,8 @@ PROGRAM DATASET_BY_COL
   !
   CALL H5Pset_libver_bounds_f(plist_id, H5F_LIBVER_LATEST_F, H5F_LIBVER_LATEST_F, error)
 
-  ! CALL h5pset_coll_metadata_write_f(plist_id, .TRUE., error)
-  ! CALL h5pset_all_coll_metadata_ops_f(plist_id, .TRUE., error)
+  !CALL h5pset_coll_metadata_write_f(plist_id, .TRUE., error)
+  !CALL h5pset_all_coll_metadata_ops_f(plist_id, .TRUE., error)
 
   config%version = H5AC_CURR_CACHE_CONFIG_VER_F;
   CALL h5pget_mdc_config_f(plist_id,  config, error)
@@ -108,7 +108,7 @@ PROGRAM DATASET_BY_COL
   ENDIF
 #endif
   config%metadata_write_strategy = H5AC_MD_W_STRAT_PROC_0_ONLY_F
-  !config%metadata_write_strategy = H5AC_MD_W_STRAT_DISTRIBUTED_F
+!  config%metadata_write_strategy = H5AC_MD_W_STRAT_DISTRIBUTED_F
 
   CALL h5pset_mdc_config_f(plist_id,  config, error)
 
@@ -232,9 +232,9 @@ PROGRAM DATASET_BY_COL
   CALL MPI_BARRIER( MPI_COMM_WORLD, error)
   t4 = MPI_Wtime()
   IF(mpi_rank.EQ.0)THEN
-     WRITE(*,'(4(f7.4,1X))') t4-t0, t2, t3
+     !WRITE(*,'(4(f7.4,1X))') t4-t0, t2, t3
+     PRINT*,mpi_size, t4-t0, t2, t3
   ENDIF
-
   !
   ! Deallocate data buffer.
   !
