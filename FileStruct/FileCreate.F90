@@ -43,7 +43,7 @@ PROGRAM DATASET_BY_COL
   CHARACTER(len=128) :: arg
   CHARACTER(len=1) :: argv
   INTEGER k
-  integer PROC0
+  INTEGER PROC0
   TYPE(C_PTR) :: f_ptr
 
 #define DEBUG 0
@@ -129,7 +129,9 @@ PROGRAM DATASET_BY_COL
         !
         ! Close the file.
         !
+        t1 = MPI_Wtime()
         CALL h5fclose_f(file_id, error)
+        t2 = MPI_Wtime() - t1
      ENDIF
 
   ELSE
@@ -194,13 +196,17 @@ PROGRAM DATASET_BY_COL
      !
      ! Close the file.
      !
+     t1 = MPI_Wtime()
      CALL h5fclose_f(file_id, error)
+     CALL MPI_BARRIER( MPI_COMM_WORLD, error)
+     t2 = MPI_Wtime() - t1
   ENDIF
 
   CALL MPI_BARRIER( MPI_COMM_WORLD, error)
   t4 = MPI_Wtime()
   IF(mpi_rank.EQ.0)THEN
-     WRITE(*,'(4(I0,X,f7.4,1X))') mpi_rank, PROC0, t4-t0
+     ! Total time, H5Fclose
+     WRITE(*,'(4(I0,X,f7.4,1X))') mpi_rank, PROC0, t4-t0, t2
   ENDIF
   !
   ! Close FORTRAN predefined datatypes.
