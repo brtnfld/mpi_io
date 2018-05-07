@@ -43,9 +43,8 @@ PROGRAM DATASET_BY_COL
   CHARACTER(len=128) :: arg
   CHARACTER(len=1) :: argv
   INTEGER k
-  LOGICAL PROC0
+  integer PROC0
   TYPE(C_PTR) :: f_ptr
-
 
 #define DEBUG 0
 
@@ -59,7 +58,7 @@ PROGRAM DATASET_BY_COL
   CALL MPI_COMM_RANK(comm, mpi_rank, mpierror)
 
   
-  PROC0 = .FALSE.
+  PROC0 = 0
   k = 0
   argv=""
   DO
@@ -70,7 +69,7 @@ PROGRAM DATASET_BY_COL
   END DO
 
   IF(argv .EQ. '0')THEN
-     PROC0=.TRUE.
+     PROC0=1
   ENDIF
 
   !
@@ -80,7 +79,7 @@ PROGRAM DATASET_BY_COL
 
   t0 = MPI_Wtime()
 
-  IF(PROC0)THEN
+  IF(PROC0.eq.1)THEN
      IF(mpi_rank.EQ.0)THEN
         
         CALL h5pcreate_f(H5P_FILE_ACCESS_F, plist_id, error)
@@ -201,7 +200,7 @@ PROGRAM DATASET_BY_COL
   CALL MPI_BARRIER( MPI_COMM_WORLD, error)
   t4 = MPI_Wtime()
   IF(mpi_rank.EQ.0)THEN
-     WRITE(*,'(4(f7.4,1X))') t4-t0
+     WRITE(*,'(4(I0,X,f7.4,1X))') mpi_rank, PROC0, t4-t0
   ENDIF
   !
   ! Close FORTRAN predefined datatypes.
