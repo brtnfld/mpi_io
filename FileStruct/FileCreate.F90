@@ -206,7 +206,7 @@ PROGRAM DATASET_BY_COL
   t4 = MPI_Wtime()
   IF(mpi_rank.EQ.0)THEN
      ! Total time, H5Fclose
-     WRITE(*,'(4(I0,X,f7.4,1X))') mpi_rank, PROC0, t4-t0, t2
+     WRITE(*,'( 2(I0,X), 2(f7.4,X))') mpi_size, PROC0, t4-t0, t2
   ENDIF
   !
   ! Close FORTRAN predefined datatypes.
