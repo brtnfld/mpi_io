@@ -1,8 +1,6 @@
 !
 ! Number of processes is assumed to be 1 or multiples of 2 (1,2,4,6,8)
 !
-
-
 PROGRAM DATASET_BY_COL
 
   USE HDF5 ! This module contains all necessary modules 
@@ -36,11 +34,16 @@ PROGRAM DATASET_BY_COL
   INTEGER :: comm, info
   INTEGER :: mpi_size, mpi_rank
 
-  INTEGER :: i, j
+  INTEGER :: i, j, k
   CHARACTER(LEN=4) :: id1,id2
   INTEGER :: depth1, depth2
 
   TYPE(H5AC_cache_config_t) :: config
+
+  CHARACTER(len=128) :: arg
+  CHARACTER(len=1) :: argv
+  INTEGER k
+  INTEGER PROC0
 
 #define DEBUG 0
 
@@ -52,6 +55,23 @@ PROGRAM DATASET_BY_COL
   CALL MPI_INIT(mpierror)
   CALL MPI_COMM_SIZE(comm, mpi_size, mpierror)
   CALL MPI_COMM_RANK(comm, mpi_rank, mpierror) 
+
+
+  k = 0
+  argv=""
+  PROC0=0
+  DO
+     CALL get_command_argument(k, arg)
+     IF (LEN_TRIM(arg) == 0) EXIT
+     argv(1:1) = arg(1:1)
+     k = k + 1
+  END DO
+
+  IF(argv .EQ. '0')THEN
+     PROC0=1
+  ENDIF
+
+
   !
   ! Initialize FORTRAN predefined datatypes
   !
@@ -68,8 +88,10 @@ PROGRAM DATASET_BY_COL
   !
   CALL H5Pset_libver_bounds_f(plist_id, H5F_LIBVER_LATEST_F, H5F_LIBVER_LATEST_F, error)
 
-  !CALL h5pset_coll_metadata_write_f(plist_id, .TRUE., error)
-  !CALL h5pset_all_coll_metadata_ops_f(plist_id, .TRUE., error)
+  IF(PROC0.EQ.0)THEN
+     CALL h5pset_coll_metadata_write_f(plist_id, .TRUE., error)
+     CALL h5pset_all_coll_metadata_ops_f(plist_id, .TRUE., error)
+  ENDIF
 
   config%version = H5AC_CURR_CACHE_CONFIG_VER_F;
   CALL h5pget_mdc_config_f(plist_id,  config, error)
@@ -107,8 +129,12 @@ PROGRAM DATASET_BY_COL
      PRINT*,  config%metadata_write_strategy
   ENDIF
 #endif
-  config%metadata_write_strategy = H5AC_MD_W_STRAT_PROC_0_ONLY_F
-!  config%metadata_write_strategy = H5AC_MD_W_STRAT_DISTRIBUTED_F
+
+  IF(PROC0.EQ.1)THEN
+     config%metadata_write_strategy = H5AC_MD_W_STRAT_PROC_0_ONLY_F
+  ELSE
+     config%metadata_write_strategy = H5AC_MD_W_STRAT_DISTRIBUTED_F
+  ENDIF
 
   CALL h5pset_mdc_config_f(plist_id,  config, error)
 
@@ -232,8 +258,8 @@ PROGRAM DATASET_BY_COL
   CALL MPI_BARRIER( MPI_COMM_WORLD, error)
   t4 = MPI_Wtime()
   IF(mpi_rank.EQ.0)THEN
-     !WRITE(*,'(4(f7.4,1X))') t4-t0, t2, t3
-     PRINT*,mpi_size, t4-t0, t2, t3
+     !WRITE(*,'(I0,X, 4(f7.4,1X))') mpi_size, t4-t0, t2, t3
+     PRINT*, mpi_size, t4-t0, t2, t3
   ENDIF
   !
   ! Deallocate data buffer.
