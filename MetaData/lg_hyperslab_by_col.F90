@@ -42,7 +42,6 @@ PROGRAM DATASET_BY_COL
 
   CHARACTER(len=128) :: arg
   CHARACTER(len=1) :: argv
-  INTEGER k
   INTEGER PROC0
 
 #define DEBUG 0
@@ -258,8 +257,8 @@ PROGRAM DATASET_BY_COL
   CALL MPI_BARRIER( MPI_COMM_WORLD, error)
   t4 = MPI_Wtime()
   IF(mpi_rank.EQ.0)THEN
-     !WRITE(*,'(I0,X, 4(f7.4,1X))') mpi_size, t4-t0, t2, t3
-     PRINT*, mpi_size, t4-t0, t2, t3
+     !WRITE(*,'(2(I0,X), 4(f7.4,1X))') mpi_size, PROC0, t4-t0, t2, t3
+     PRINT*, mpi_size, PROC0, t4-t0, t2, t3
   ENDIF
   !
   ! Deallocate data buffer.
