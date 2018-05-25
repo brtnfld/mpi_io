@@ -42,7 +42,6 @@ PROGRAM DATASET_BY_COL
 
   CHARACTER(len=128) :: arg
   CHARACTER(len=1) :: argv
-  INTEGER k
   INTEGER PROC0
 
 #define DEBUG 0
