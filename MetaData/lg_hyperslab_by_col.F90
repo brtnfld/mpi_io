@@ -34,7 +34,7 @@ PROGRAM DATASET_BY_COL
   INTEGER :: comm, info
   INTEGER :: mpi_size, mpi_rank
 
-  INTEGER :: i, j, k
+  INTEGER :: i, j
   CHARACTER(LEN=4) :: id1,id2
   INTEGER :: depth1, depth2
 
@@ -259,7 +259,7 @@ PROGRAM DATASET_BY_COL
   t4 = MPI_Wtime()
   IF(mpi_rank.EQ.0)THEN
      !WRITE(*,'(I0,X, 4(f7.4,1X))') mpi_size, t4-t0, t2, t3
-     PRINT*, mpi_size, t4-t0, t2, t3
+     PRINT*, mpi_size, PROC0, t4-t0, t2, t3
   ENDIF
   !
   ! Deallocate data buffer.
