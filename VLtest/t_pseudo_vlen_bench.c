@@ -30,15 +30,11 @@ main (int argc, char *argv[] )
 {
     FILE * pFile;
 
-    hid_t       file, filetype, memtype, space, dset;
+    hid_t       file, space, dset;
                                     /* Handles */
     herr_t      status;
-    hvl_t       *wdataVL,           /* Array of vlen structures */
-                *rdataVL;             /* Pointer to vlen structures */
     hsize_t     dims[1];
     hsize_t     dims2D[1];
-    int         *ptr,
-                ndims;
     int         *wdata,
                 *rdata;
     hsize_t     i, j;
@@ -51,8 +47,7 @@ main (int argc, char *argv[] )
     hid_t   plist_id, fcpl;
     int write=0,read=0,vl=0;
 
-    hsize_t *indx;
-    int *nvl_len;
+    hsize_t *nvl_len;
     
     bool vlvl = true;
 
@@ -82,10 +77,12 @@ main (int argc, char *argv[] )
     if(vlvl)
       dims[0] = 2*NROWS;
 
-    indx = malloc(dims[0]*sizeof(hsize_t));
-    nvl_len = malloc(dims[0]*sizeof(hsize_t));
+    if( !(nvl_len = malloc(dims[0]*sizeof(hsize_t)) ) ) {
+      printf("malloc nvl_len failed \n");
+      abort();
+    }
 
-    printf("VL_2D(NROWS,NVL*) = (%ld,%ld)\n", dims[0], NVL);
+    printf("VL_2D(NROWS,NVL*) = (%lld,%lld)\n", dims[0], NVL);
 
 
     if( write==1 && !(vl == 1)) {
@@ -150,16 +147,21 @@ main (int argc, char *argv[] )
  
     if(write) {
       wdata = (int *)malloc(dims2D[0]*sizeof(int));
-      int icnt2 = 0;
-      for (i = 0; i <  dims[0]; i++){
-	NVL = nvl_len[i];
-	nvl_len[i] = icnt2;
-	for (j = 0; j < NVL; j++) {
-	  *(wdata + nvl_len[i] + j) = NVL-j;
-	}
+      if(wdata) {
+	hsize_t icnt2 = 0;
+	for (i = 0; i <  dims[0]; i++){
+	  NVL = nvl_len[i];
+	  nvl_len[i] = icnt2;
+	  for (j = 0; j < NVL; j++) {
+	    *(wdata + nvl_len[i] + j) = NVL-j;
+	  }
 	icnt2 = icnt2 + NVL;
+	}
+      } else {
+	printf("wdata malloc failed \n");
+	abort();
       }
-      
+
       plist_id = H5Pcreate(H5P_FILE_ACCESS);
 #ifdef core
       H5Pset_fapl_core(plist_id, core, 1);
@@ -176,7 +178,6 @@ main (int argc, char *argv[] )
       status = H5Dwrite (dset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &wdata[0]);
       status = H5Dclose (dset);
       free(wdata);
-
       dset = H5Dopen(file, DATASET_INDX, H5P_DEFAULT);
       status = H5Dwrite (dset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &nvl_len[0]);
       status = H5Dclose (dset);
@@ -206,7 +207,7 @@ main (int argc, char *argv[] )
        * will be done by the library.
        */
       space = H5Dget_space (dset);
-      ndims = H5Sget_simple_extent_dims (space, dims2D, NULL);
+      //ndims = H5Sget_simple_extent_dims (space, dims2D, NULL);
       rdata = (int *)malloc(dims2D[0]*sizeof(int));
       
       /*
@@ -247,7 +248,7 @@ main (int argc, char *argv[] )
        * will be done by the library.
        */
       space = H5Dget_space (dset);
-      ndims = H5Sget_simple_extent_dims (space, dims, NULL);
+      //ndims = H5Sget_simple_extent_dims (space, dims, NULL);
       rdata = (int *)malloc(dims[0]*sizeof(int));
       /*
        * Read the data.
@@ -259,7 +260,7 @@ main (int argc, char *argv[] )
        * Output the variable-length data to the screen.
        */
 #if DEBUG
-      printf("Total %ld Bytes, VL read time = %f seconds\n",DSsize, r);
+      printf("Total %lld Bytes, VL read time = %f seconds\n",DSsize, r);
       printf (" {\n");
       for (i=0; i<dims[0]; i++) {
 	printf(" %d ",rdata[i]);
@@ -285,7 +286,7 @@ main (int argc, char *argv[] )
     }
 
     DSsize = (dims2D[0]+dims[0])*sizeof(int)/1048576;
-    printf("Total %ld MB, %f %f %f %f MB/s \n",DSsize, -99., DSsize/w, -99.,DSsize/r);
+    printf("Total %lld MB, %f %f %f %f MB/s \n",DSsize, -99., DSsize/w, -99.,DSsize/r);
     //printf("Total time %ld MB, %f %f %f %f MB/s \n",DSsize, w_vl, w, r_vl, r);
 
     pFile = fopen ("VL_timing.txt", "a");
