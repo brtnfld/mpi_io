@@ -207,7 +207,8 @@ main (int argc, char *argv[] )
        * will be done by the library.
        */
       space = H5Dget_space (dset);
-      //ndims = H5Sget_simple_extent_dims (space, dims2D, NULL);
+      int ndims = H5Sget_simple_extent_dims (space, dims2D, NULL);
+
       rdata = (int *)malloc(dims2D[0]*sizeof(int));
       
       /*
