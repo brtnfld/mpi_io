@@ -279,7 +279,7 @@ PROGRAM DATASET_BY_COL
   CALL MPI_BARRIER( MPI_COMM_WORLD, error)
   t4 = MPI_Wtime()
 
-  IF(mpi_rank.EQ.0) PRINT*,info%type !ret_value
+!  IF(mpi_rank.EQ.0) PRINT*,info%type !ret_value
 
   call h5fclose_f(file_id,error)
 
