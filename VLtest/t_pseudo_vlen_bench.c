@@ -37,12 +37,13 @@ main (int argc, char *argv[] )
     hsize_t     dims2D[1];
     int         *wdata,
                 *rdata;
+    hsize_t     *rdata_indx;
     hsize_t     i, j;
     int opt, cnt=0;
     double w_vl=0., w=0., r_vl=0., r=0.;
     hsize_t DSsize;
-    hsize_t NROWS = 4096;
-    hsize_t NVL = 4096;
+    hsize_t NROWS = 4096; //4096;
+    hsize_t NVL = 4096; //4096;
     struct timeval  tic, toc;
     hid_t   plist_id, fcpl;
     int write=0,read=0,vl=0;
@@ -152,6 +153,7 @@ main (int argc, char *argv[] )
 	for (i = 0; i <  dims[0]; i++){
 	  NVL = nvl_len[i];
 	  nvl_len[i] = icnt2;
+	  // printf("aa %d %d \n",i,nvl_len[i]);
 	  for (j = 0; j < NVL; j++) {
 	    *(wdata + nvl_len[i] + j) = NVL-j;
 	  }
@@ -179,7 +181,7 @@ main (int argc, char *argv[] )
       status = H5Dclose (dset);
       free(wdata);
       dset = H5Dopen(file, DATASET_INDX, H5P_DEFAULT);
-      status = H5Dwrite (dset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &nvl_len[0]);
+      status = H5Dwrite (dset, H5T_NATIVE_HSIZE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &nvl_len[0]);
       status = H5Dclose (dset);
       free(nvl_len);
 
@@ -224,19 +226,8 @@ main (int argc, char *argv[] )
        */
 #if DEBUG
       printf("Total %ld Bytes, VL read time = %f seconds\n",DSsize, r);
-      printf (" {\n");
-      for (i=0; i<dims2D[0]; i++) {
-	printf(" %d ",rdata[i]);
-      }
-      printf (" }\n");
 #endif
       
-      /*
-       * Close and release resources.  Note we must still free the
-       * top-level pointer "rdataVL", as H5Dvlen_reclaim only frees the
-       * actual variable-length data, and not the structures themselves.
-       */
-      free (rdata);
 
       status = H5Dclose (dset);
       status = H5Sclose (space);
@@ -250,25 +241,42 @@ main (int argc, char *argv[] )
        */
       space = H5Dget_space (dset);
       //ndims = H5Sget_simple_extent_dims (space, dims, NULL);
-      rdata = (int *)malloc(dims[0]*sizeof(int));
+      rdata_indx = (hsize_t *)malloc(dims[0]*sizeof(hsize_t));
       /*
        * Read the data.
        */
       gettimeofday(&tic, NULL);
-      status = H5Dread (dset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &rdata[0]);
+      status = H5Dread (dset, H5T_NATIVE_HSIZE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &rdata_indx[0]);
       
       /*
        * Output the variable-length data to the screen.
        */
 #if DEBUG
       printf("Total %lld Bytes, VL read time = %f seconds\n",DSsize, r);
-      printf (" {\n");
       for (i=0; i<dims[0]; i++) {
-	printf(" %d ",rdata[i]);
+	hsize_t istart = rdata_indx[i];
+	hsize_t inum;
+	if(i != dims[0]-1) {
+	  inum =  rdata_indx[i+1]-rdata_indx[i];
+	} else {
+	  inum = dims2D[0] - rdata_indx[i]; 
+	}
+
+	printf (" {");
+	//	printf("is %ld %ld", istart, iend);
+	for (j=istart; j<istart + inum; j++) {
+	  printf(" %d ",rdata[j]);
+	}
+	printf (" }\n");
       }
-      printf (" }\n");
 #endif
       
+      /*
+       * Close and release resources.  Note we must still free the
+       * top-level pointer "rdataVL", as H5Dvlen_reclaim only frees the
+       * actual variable-length data, and not the structures themselves.
+       */
+      free (rdata_indx);
       /*
        * Close and release resources.  Note we must still free the
        * top-level pointer "rdataVL", as H5Dvlen_reclaim only frees the
@@ -287,13 +295,14 @@ main (int argc, char *argv[] )
     }
 
     DSsize = (dims2D[0]+dims[0])*sizeof(int)/1048576;
-    printf("Total %lld MB, %f %f %f %f MB/s \n",DSsize, -99., DSsize/w, -99.,DSsize/r);
     //printf("Total time %ld MB, %f %f %f %f MB/s \n",DSsize, w_vl, w, r_vl, r);
 
     pFile = fopen ("VL_timing.txt", "a");
     if(write && !vl){
+      printf("Total %lld MB,%f MB/s \n",DSsize,DSsize/w);
       fprintf(pFile, "%f ", w);
     } else if(read && !vl){
+      printf("Total %lld MB,%f MB/s \n",DSsize,DSsize/r);
       fprintf(pFile, "%f ", r);
     } else if(write && vl){
       fprintf(pFile, "%f ", w_vl);
