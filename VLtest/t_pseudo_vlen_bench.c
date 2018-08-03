@@ -40,13 +40,13 @@ main (int argc, char *argv[] )
     hsize_t     *rdata_indx;
     hsize_t     i, j;
     int opt, cnt=0;
-    double w_vl=0., w=0., r_vl=0., r=0.;
+    double w=0., r=0.;
     hsize_t DSsize;
     hsize_t NROWS = 4096; //4096;
     hsize_t NVL = 4096; //4096;
     struct timeval  tic, toc;
     hid_t   plist_id, fcpl;
-    int write=0,read=0,vl=0;
+    int write=0,read=0;
 
     hsize_t *nvl_len;
     
@@ -57,13 +57,12 @@ main (int argc, char *argv[] )
         switch (opt) {
         case 'r': read = 1; break;
         case 'w': write = 1; break;
-        case 'v': vl = 1; break;
         default:
-            fprintf(stderr, "Usage: %s [-rwv] [vl]\n", argv[0]);
+            fprintf(stderr, "Usage: %s [-rw]\n", argv[0]);
             exit(EXIT_FAILURE);
         }
     }
-    printf("options: w=%d r=%d vl=%d \n", write, read, vl);
+    printf("options: w=%d r=%d \n", write, read);
     if (argc > 2) {
       NROWS = strtoimax(argv[2], NULL, 10);
     }
@@ -86,7 +85,7 @@ main (int argc, char *argv[] )
     printf("VL_2D(NROWS,NVL*) = (%lld,%lld)\n", dims[0], NVL);
 
 
-    if( write==1 && !(vl == 1)) {
+    if( write==1) {
     /*
      * Create a new file using the default properties.
      */
@@ -294,20 +293,16 @@ main (int argc, char *argv[] )
 
     }
 
-    DSsize = (dims2D[0]+dims[0])*sizeof(int)/1048576;
-    //printf("Total time %ld MB, %f %f %f %f MB/s \n",DSsize, w_vl, w, r_vl, r);
+    DSsize = (dims2D[0]*sizeof(int)+dims[0]*sizeof(hsize_t))/1048576;
+    //printf("Total time %ld MB, %f %f  MB/s \n", DSsize,  w, r);
 
     pFile = fopen ("VL_timing.txt", "a");
-    if(write && !vl){
+    if(write){
       printf("Total %lld MB,%f MB/s \n",DSsize,DSsize/w);
       fprintf(pFile, "%f ", w);
-    } else if(read && !vl){
+    } else if(read){
       printf("Total %lld MB,%f MB/s \n",DSsize,DSsize/r);
       fprintf(pFile, "%f ", r);
-    } else if(write && vl){
-      fprintf(pFile, "%f ", w_vl);
-    } else if(read && vl){
-      fprintf(pFile, "%f \n", r_vl);
     }
     fclose(pFile);
     return 0;
