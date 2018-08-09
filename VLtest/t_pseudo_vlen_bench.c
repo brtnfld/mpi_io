@@ -49,6 +49,8 @@ main (int argc, char *argv[] )
     int write=0,read=0;
 
     hsize_t *nvl_len;
+    hsize_t nelm;
+    hsize_t nelm_indx = 0;
     
     bool vlvl = true;
 
@@ -67,7 +69,6 @@ main (int argc, char *argv[] )
       NROWS = strtoimax(argv[2], NULL, 10);
     }
 
-
     /*
      * Initialize variable-length data.  wdataVL[0] is a countdown of
      * length NVL
@@ -77,6 +78,8 @@ main (int argc, char *argv[] )
     if(vlvl)
       dims[0] = 2*NROWS;
 
+    nelm = NROWS*NVL;
+
     if( !(nvl_len = malloc(dims[0]*sizeof(hsize_t)) ) ) {
       printf("malloc nvl_len failed \n");
       abort();
@@ -84,8 +87,7 @@ main (int argc, char *argv[] )
 
     printf("VL_2D(NROWS,NVL*) = (%lld,%lld)\n", dims[0], NVL);
 
-
-    if( write==1) {
+    if(write==1) {
     /*
      * Create a new file using the default properties.
      */
@@ -114,19 +116,50 @@ main (int argc, char *argv[] )
       file = H5Fcreate (FILENAME, H5F_ACC_TRUNC, fcpl, plist_id);
 
       int nd = dims[0]/2/NVL;
-      hsize_t k = 1;
-      hsize_t cnt = 0;
-      for (j=0; j< dims[0]; j++) {
-	cnt = cnt + k;
-	nvl_len[j] = k;
-	if(j <= dims[0]/2-1) {
-	  if( j != dims[0]/2-1) k++;
-	} else {
-	  k--;
+      hsize_t k = 0;
+      int increase = 1;
+      dims2D[0] = 0;
+      for (j=0; j < nelm; j++) {
+	nelm_indx += 1;
+	if(k == NVL)
+	  increase = 0;
+	if(increase)
+	  k += 1;
+	else
+	  k -= 1;
+	if(k < 1 && increase == 0){
+	  k = 2;
+	  increase = 1;
 	}
+	if(dims2D[0] == nelm) {
+	  nelm_indx -= 1;
+	  break;
+	} else if(dims2D[0] + k > nelm) {
+	  nvl_len[j] = nelm - dims2D[0];
+	  break;
+	} else {
+	  dims2D[0] = dims2D[0] + k;
+	  nvl_len[j] = k;
+	}
+	//	printf("%lld %lld %lld\n", nelm_indx, nvl_len[j], dims2D[0]);
       }
 
-      dims2D[0] = cnt;
+      printf("%lld %lld \n", nelm_indx, dims[0]);
+      if(nelm_indx>dims[0]) {
+	printf("nv length does not match\n");
+	abort();
+      }
+
+      dims2D[0] = 0;
+      for (j=0; j < nelm_indx ; j++) {
+	dims2D[0] += nvl_len[j];
+      }
+      
+      //  printf("nct %lld %lld %lld \n", nelm_indx, NROWS*NVL, dims2D[0]);
+      if(dims2D[0] != NROWS*NVL){
+	printf("Failed VL sizes %lld %lld\n",dims2D[0],NROWS*NVL);
+	abort();
+      }
 
       space = H5Screate_simple (1, dims2D, NULL);
 
@@ -134,7 +167,7 @@ main (int argc, char *argv[] )
       status = H5Dclose (dset);
       status = H5Sclose (space);
 
-      space = H5Screate_simple (1, dims, NULL);
+      space  = H5Screate_simple (1, &nelm_indx, NULL);
       dset   = H5Dcreate (file, DATASET_INDX, H5T_NATIVE_INT, space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
       status = H5Dclose (dset);
       status = H5Sclose (space);
@@ -143,26 +176,29 @@ main (int argc, char *argv[] )
       
       status = H5Pclose (plist_id);
       status = H5Pclose (fcpl);
+      //   printf("nct %lld \n", nelm_indx);
     }
+    // printf("nct %lld \n", nelm_indx);
  
     if(write) {
       wdata = (int *)malloc(dims2D[0]*sizeof(int));
       if(wdata) {
 	hsize_t icnt2 = 0;
-	for (i = 0; i <  dims[0]; i++){
+	for (i = 0; i <  nelm_indx; i++){
 	  NVL = nvl_len[i];
 	  nvl_len[i] = icnt2;
-	  // printf("aa %d %d \n",i,nvl_len[i]);
+	  //printf("aa %lld \n", nvl_len[i]);
 	  for (j = 0; j < NVL; j++) {
 	    *(wdata + nvl_len[i] + j) = NVL-j;
+	    // printf("aa %lldd %lldd \n",i,NVL-j);
 	  }
-	icnt2 = icnt2 + NVL;
+	  icnt2 = icnt2 + NVL;
 	}
       } else {
 	printf("wdata malloc failed \n");
 	abort();
       }
-
+      //  printf("here \n");
       plist_id = H5Pcreate(H5P_FILE_ACCESS);
 #ifdef core
       H5Pset_fapl_core(plist_id, core, 1);
@@ -226,7 +262,6 @@ main (int argc, char *argv[] )
 #if DEBUG
       printf("Total %ld Bytes, VL read time = %f seconds\n",DSsize, r);
 #endif
-      
 
       status = H5Dclose (dset);
       status = H5Sclose (space);
@@ -239,7 +274,7 @@ main (int argc, char *argv[] )
        * will be done by the library.
        */
       space = H5Dget_space (dset);
-      //ndims = H5Sget_simple_extent_dims (space, dims, NULL);
+      ndims = H5Sget_simple_extent_dims (space, dims, NULL);
       rdata_indx = (hsize_t *)malloc(dims[0]*sizeof(hsize_t));
       /*
        * Read the data.
