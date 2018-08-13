@@ -6,7 +6,7 @@ if [ "$HOST" == 'jelly' ];then
     RUN="$HOME/packages/nocache/nocache"
 fi
 cmd=$1
-nt=1
+nt=10
 ##for j in 4096 8192 16384 32768 65536 131072 262144
 for j in 4096 8192 16384 32768 65536 131072 262144
 do
