@@ -11,12 +11,12 @@ WRKDIR=$SCRATCH/$SLURM_JOB_ID
 mkdir $WRKDIR
 lfs setstripe -c 12 -S 16m $WRKDIR
 cd $WRKDIR
-cmd="a.out"
+cmd="t_vlen_bench2"
 script="bench.sh"
 ##cleanup=yes
 cp $SLURM_SUBMIT_DIR/$cmd .
 cp $SLURM_SUBMIT_DIR/$script .
-./$script
+./$script $cmd
 cp sum_* $SLURM_SUBMIT_DIR/
 cp file* $SLURM_SUBMIT_DIR/
 cd $SLURM_SUBMIT_DIR
