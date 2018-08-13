@@ -19,7 +19,7 @@
 #include <stdbool.h>
 #include <sys/stat.h>
 
-#define DEBUG 1
+#define DEBUG 0
 #define FILENAME        "h5ex_t_vlen.h5"
 #define DATASET_VL      "DSVL"
 #define DATASET         "DS"
@@ -205,7 +205,7 @@ main (int argc, char *argv[] )
 
       status = H5Dvlen_reclaim (memtype, space, H5P_DEFAULT, wdataVL);
 
-      DSsize = H5Dget_storage_size(dset);
+      // DSsize = H5Dget_storage_size(dset);
 
       status = H5Dclose (dset);
       status = H5Sclose (space);
@@ -220,6 +220,7 @@ main (int argc, char *argv[] )
       H5Pclose(plist_id);
       H5Pclose(fcpl);
     }
+
     if(read) {
       /*
        * Open file and dataset.
@@ -251,8 +252,8 @@ main (int argc, char *argv[] )
        */
       gettimeofday(&tic, NULL);
       status = H5Dread (dset, memtype, H5S_ALL, H5S_ALL, H5P_DEFAULT, rdataVL);
-      gettimeofday(&toc, NULL);
-      r_vl = (double) (toc.tv_usec - tic.tv_usec) / 1000000 + (double) (toc.tv_sec - tic.tv_sec);
+      //   gettimeofday(&toc, NULL);
+      //r_vl = (double) (toc.tv_usec - tic.tv_usec) / 1000000 + (double) (toc.tv_sec - tic.tv_sec);
       
 #if DEBUG
       printf("Total %lld MB, VL write time = %f seconds\n", DSsize, r_vl);
@@ -272,9 +273,8 @@ main (int argc, char *argv[] )
 #endif
 
       status = H5Dvlen_reclaim (memtype, space, H5P_DEFAULT, rdataVL);
-      free (rdataVL);
 
-      DSsize = H5Dget_storage_size(dset);
+      //  DSsize = H5Dget_storage_size(dset);
       status = H5Dclose (dset);
       status = H5Sclose (space);
       status = H5Tclose (memtype);
@@ -283,6 +283,7 @@ main (int argc, char *argv[] )
       gettimeofday(&toc, NULL);
       r = r + (double) (toc.tv_usec - tic.tv_usec) / 1000000 + (double) (toc.tv_sec - tic.tv_sec);
       status = H5Pclose (plist_id);
+      free (rdataVL);
 
     }
     struct stat st;

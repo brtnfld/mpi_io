@@ -145,7 +145,7 @@ main (int argc, char *argv[] )
 	//	printf("%lld %lld %lld\n", nelm_indx, nvl_len[j], dims2D);
       }
 
-      printf("%lld %lld \n", nelm_indx, dims[0]);
+      //printf("%lld %lld \n", nelm_indx, dims[0]);
       if(nelm_indx>dims[0]) {
 	printf("nv length does not match\n");
 	abort();
@@ -186,7 +186,7 @@ main (int argc, char *argv[] )
 	abort();
       }
       
-      DSsize = H5Dget_storage_size(dset);
+      //   DSsize = H5Dget_storage_size(dset);
       /*
        * Write the data to the dataset.
        */
@@ -208,7 +208,7 @@ main (int argc, char *argv[] )
       
       w = (double) (toc.tv_usec - tic.tv_usec) / 1000000 + (double) (toc.tv_sec - tic.tv_sec);
       H5Pclose(plist_id);
-      H5Pclose (fcpl);
+      H5Pclose(fcpl);
     } /* end write */
 
 
@@ -289,6 +289,14 @@ main (int argc, char *argv[] )
 	printf (" }\n");
       }
 #endif
+
+      status = H5Dclose (dset);
+      status = H5Sclose (space);
+
+      status = H5Fclose (file);
+      gettimeofday(&toc, NULL);
+      r = r + (double) (toc.tv_usec - tic.tv_usec) / 1000000 + (double) (toc.tv_sec - tic.tv_sec);
+      status = H5Pclose (plist_id);
       
       /*
        * Close and release resources.  Note we must still free the
@@ -302,14 +310,6 @@ main (int argc, char *argv[] )
        * actual variable-length data, and not the structures themselves.
        */
       free (rdata);
-
-      status = H5Dclose (dset);
-      status = H5Sclose (space);
-
-      status = H5Fclose (file);
-      gettimeofday(&toc, NULL);
-      r = r + (double) (toc.tv_usec - tic.tv_usec) / 1000000 + (double) (toc.tv_sec - tic.tv_sec);
-      status = H5Pclose (plist_id);
 
     }
 
