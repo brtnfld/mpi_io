@@ -23,6 +23,7 @@
 #define FILENAME        "h5ex_t_vlen.h5"
 #define DATASET_VL      "DSVL"
 #define DATASET         "DS"
+#define DATASET2         "DS2"
 #define DATASET_INDX    "DS_INDX"
 //#define core 67108864
 
@@ -31,7 +32,7 @@ main (int argc, char *argv[] )
 {
     FILE * pFile;
 
-    hid_t       file, space, dset, dcpl;
+    hid_t       file, space, dset, dcpl,mem_dataspace;
                                     
     hid_t       space_indx, dset_indx;/* Handles */
     herr_t      status;
@@ -40,7 +41,7 @@ main (int argc, char *argv[] )
     int         *wdata,
                 *rdata;
     hsize_t     *rdata_indx;
-    hsize_t     i, j, k, m;
+    hsize_t     i, j, k, m, n;
     int opt, cnt=0;
     double w=0., r=0.;
     hsize_t DSsize;
@@ -56,12 +57,14 @@ main (int argc, char *argv[] )
     hsize_t maxdims[1];
     hsize_t extdims[1],
       chunk[1] = {16};
+    
     bool vlvl = true;
 
     hsize_t start[1],
       stride[1],
       count[1],
       block[1];
+
 
     while ((opt = getopt(argc, argv, "rwv")) != -1) {
         cnt=cnt+1;
@@ -89,7 +92,7 @@ main (int argc, char *argv[] )
 
     nelm = NROWS*NVL;
 
-    if( !(nvl_len = malloc(dims[0]*sizeof(hsize_t)) ) ) {
+    if( !(nvl_len = malloc((dims[0])*sizeof(hsize_t)) ) ) {
       printf("malloc nvl_len failed \n");
       abort();
     }
@@ -126,116 +129,148 @@ main (int argc, char *argv[] )
 
       hsize_t k = 0;
       int increase = 1;
+      int dir = 0;
       dims2D = 0;
-      //  for (j=0; j < nelm; j++) {
-      for (j=0; j < 3; j++) {
-	nelm_indx += 1;
-	if(k == NVL)
-	  increase = 0;
-	if(increase)
-	  k += 1;
-	else
-	  k -= 1;
-	if(k < 1 && increase == 0){
-	  k = 2;
-	  increase = 1;
-	}
+      extdims[0]=1;
+      int number = 0;
+      int forend = 0;
+      int jj=0;
+      for (j=0; j < nelm; j++) {
 
-	start[0] = nelm_indx-1;
+	count[0] = (j/NVL%2?(NVL-1)-j%NVL:j%NVL+1);
+	if(count[0] == 0) {
+	  j = j + 1;
+	  continue;
+	}
+	jj +=1;
+	nelm_indx += 1;
+	k = count[0];
+
+	start[0] = dims2D;
 
 	if(dims2D == nelm) {
 	  nelm_indx -= 1;
 	  break;
 	} else if(dims2D + k > nelm) {
-	  nvl_len[j] = nelm - dims2D;
-	  break;
+	  nvl_len[jj] = nelm - dims2D;
+	  forend = 1;
+	  //  break;
 	} else {
 	  dims2D = dims2D + k;
-	  nvl_len[j] = k;
+	  nvl_len[jj] = k;
 	}
-	//	printf("%lld %lld %lld\n", nelm_indx, nvl_len[j], dims2D);
+	count[0] = nvl_len[jj];
+	//	printf("nelm_indx, nvl_len[j], dims2D, %lld %lld %lld\n", nelm_indx, nvl_len[j], dims2D);
 
-      //printf("%lld %lld \n", nelm_indx, dims[0]);
-/* 	if(nelm_indx>dims[0]) { */
-/* 	  printf("nv length does not match\n"); */
-/* 	  abort(); */
-/* 	} */
+	//	dims2D = 0;
+	// 	for (m=0; m < nelm_indx ; m++) {
+	//	  dims2D += nvl_len[j];
+	  //	}
 
-	dims2D = 0;
-       	for (m=0; m < nelm_indx ; m++) {
-	  dims2D += nvl_len[m];
-	}
-      
-      //  printf("nct %lld %lld %lld \n", nelm_indx, NROWS*NVL, dims2D);
-/*       if(dims2D != NROWS*NVL){ */
-/* 	printf("Failed VL sizes %lld %lld\n",dims2D,NROWS*NVL); */
-/* 	abort(); */
-/*       } */
 
 	dcpl = H5Pcreate (H5P_DATASET_CREATE);
 	status = H5Pset_chunk (dcpl, 1, chunk);
 
 	if(j == 0) {
 	  maxdims[0] = H5S_UNLIMITED;
-	  space = H5Screate_simple (1, &nvl_len[j], maxdims);
-	  dset  = H5Dcreate (file, DATASET, H5T_NATIVE_INT, space, H5P_DEFAULT, dcpl, H5P_DEFAULT);
-	}
-	
-	if(j != 0) {
-	  extdims[0] =  dims2D;
-	  printf("extdims %lld \n", extdims[0]);
-	  dset = H5Dopen (file, DATASET, H5P_DEFAULT);
+	  space = H5Screate_simple (1, &nvl_len[jj], maxdims);
+	  dset  = H5Dcreate (file, DATASET2, H5T_NATIVE_INT, space, H5P_DEFAULT, dcpl, H5P_DEFAULT);
+	} else {
+	  extdims[0] +=  count[0];
+	  //  printf("extdims %lld \n", extdims[0]);
+	  dset = H5Dopen (file, DATASET2, H5P_DEFAULT);
 	  status = H5Dset_extent (dset, extdims);
 	  space = H5Dget_space (dset);
 	}
-	
-	count[0] = nvl_len[j];
-
-	printf("start,count %lld %lld %lld \n",start[0], count[0],nvl_len[j]);
+	//	count[0] = nvl_len[j];
 
 	status = H5Sselect_hyperslab (space, H5S_SELECT_SET, start, NULL, count, NULL);
 
-	wdata = (int *)malloc(nvl_len[j]*sizeof(int));
+	//	printf("start,count %lld %lld \n",start[0], count[0]);
+	wdata = (int *)malloc(nvl_len[jj]*sizeof(int));
+	
 	if(wdata) {
-	  hsize_t icnt2 = 0;
-	  //  for (i = 0; i <  nelm_indx; i++){
-	    NVL = nvl_len[j];
-	    // printf("aa %lld \n", nvl_len[i]);
-	    for (m = 0; m < NVL; m++) {
-	      // *(wdata + m) = NVL-m;
-	      *(wdata + m) = 99-m;
+	    for (m = 0; m < nvl_len[jj]; m++) {
+	       *(wdata + m) = nvl_len[jj]-m;
+	      //  *(wdata + m) = 99-m;
 	      //  printf("aa %lld %lld \n",i,NVL-m);
 	    }
-	    icnt2 = icnt2 + NVL;
-	    nvl_len[j] = icnt2;
 	} else {
 	  printf("wdata malloc failed \n");
 	  abort();
 	}
+	//	for (m = 0; m < nvl_len[jj]; m++)
+	//  printf("%d \n", wdata[m]);
+
+	mem_dataspace = H5Screate_simple (1, count, NULL);
+
+	status = H5Dwrite (dset, H5T_NATIVE_INT, mem_dataspace, space, H5P_DEFAULT, &wdata[0]);
+	if(status < 0) printf("H5Dwrite FAILED \n");
+	status = H5Dclose (dset);
+	status = H5Sclose (space);
+	status = H5Sclose (mem_dataspace);
+	status = H5Pclose (dcpl);
+	free(wdata);
+	if(forend == 1) break;
+      }
+
+      //printf("%lld %lld \n", nelm_indx, dims[0]);
+ /*      if(nelm_indx>dims[0]) { */
+/* 	printf("nv length does not match\n"); */
+/* 	abort(); */
+/*       } */
+#if 0
+      dims2D = 0;
+      for (j=0; j < nelm_indx ; j++) {
+	dims2D += nvl_len[jj];
+      }
+      
+      //  printf("nct %lld %lld %lld \n", nelm_indx, NROWS*NVL, dims2D);
+      if(dims2D != NROWS*NVL){
+	printf("Failed VL sizes %lld %lld\n",dims2D,NROWS*NVL);
+	abort();
+      }
+
+      space = H5Screate_simple (1, &dims2D, NULL);
+      dset  = H5Dcreate (file, DATASET, H5T_NATIVE_INT, space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+      space_indx  = H5Screate_simple (1, &nelm_indx, NULL);
+      dset_indx   = H5Dcreate (file, DATASET_INDX, H5T_NATIVE_INT, space_indx, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+      wdata = (int *)malloc(dims2D*sizeof(int));
+      if(wdata) {
+	hsize_t icnt2 = 0;
+	for (i = 0; i <  nelm_indx; i++){
+	  NVL = nvl_len[i];
+	  nvl_len[i] = icnt2;
+	  // printf("aa %lld \n", nvl_len[i]);
+	  for (j = 0; j < NVL; j++) {
+	    *(wdata + nvl_len[i] + j) = NVL-j;
+	    //  printf("aa %lld %lld \n",i,NVL-j);
+	  }
+	  icnt2 = icnt2 + NVL;
+	}
+      } else {
+	printf("wdata malloc failed \n");
+	abort();
+      }
       
       //   DSsize = H5Dget_storage_size(dset);
       /*
        * Write the data to the dataset.
        */
-	gettimeofday(&tic, NULL);
+      gettimeofday(&tic, NULL);
 
-	printf("aa %lld %lld \n", wdata[0], wdata[1]);
-	status = H5Dwrite (dset, H5T_NATIVE_INT, H5S_ALL, space, H5P_DEFAULT, &wdata[0]);
-	status = H5Dclose (dset);
-	status = H5Sclose (space);
-	status = H5Pclose (dcpl);
-	free(wdata);
-      }
+      status = H5Dwrite (dset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &wdata[0]);
+      status = H5Dclose (dset);
+      status = H5Sclose (space);
+      free(wdata);
 
-      space_indx  = H5Screate_simple (1, &nelm_indx, NULL);
-      dset_indx   = H5Dcreate (file, DATASET_INDX, H5T_NATIVE_INT, space_indx, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
       status = H5Dwrite (dset_indx, H5T_NATIVE_HSIZE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &nvl_len[0]);
       status = H5Dclose (dset_indx);
       status = H5Sclose (space_indx);
       free(nvl_len);
-
-      //   }
-
+#endif
       status = H5Fclose (file);
       
       gettimeofday(&toc, NULL);
@@ -243,7 +278,6 @@ main (int argc, char *argv[] )
       w = (double) (toc.tv_usec - tic.tv_usec) / 1000000 + (double) (toc.tv_sec - tic.tv_sec);
       H5Pclose(plist_id);
       H5Pclose(fcpl);
-
     } /* end write */
 
 
