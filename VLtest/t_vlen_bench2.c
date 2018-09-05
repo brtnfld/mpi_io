@@ -52,6 +52,7 @@ main (int argc, char *argv[] )
 
     hsize_t nelm;
     hsize_t nelm_indx = 0;
+    hsize_t maxdims[1];
     
     bool vlvl = true;
 
@@ -74,6 +75,7 @@ main (int argc, char *argv[] )
      * Initialize variable-length data.  wdataVL[0] is a countdown of
      * length NVL
      */
+    maxdims[0] = H5S_UNLIMITED;
 
     dims[0] = NROWS;
     if(vlvl)
@@ -196,7 +198,7 @@ main (int argc, char *argv[] )
       filetype = H5Tvlen_create (H5T_STD_I32LE);
       memtype = H5Tvlen_create (H5T_NATIVE_INT);
 
-      space = H5Screate_simple (1, &nelm_indx, NULL);
+      space = H5Screate_simple (1, &nelm_indx, maxdims);
 
       dset   = H5Dcreate (file, DATASET_VL, filetype, space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 

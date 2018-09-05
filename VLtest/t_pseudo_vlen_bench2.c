@@ -142,7 +142,6 @@ main (int argc, char *argv[] )
 	  j = j + 1;
 	  continue;
 	}
-	jj +=1;
 	nelm_indx += 1;
 	k = count[0];
 
@@ -212,6 +211,7 @@ main (int argc, char *argv[] )
 	status = H5Pclose (dcpl);
 	free(wdata);
 	if(forend == 1) break;
+	jj +=1;
       }
 
       //printf("%lld %lld \n", nelm_indx, dims[0]);
@@ -219,58 +219,37 @@ main (int argc, char *argv[] )
 /* 	printf("nv length does not match\n"); */
 /* 	abort(); */
 /*       } */
-#if 0
+
+/*       printf("nct %lld %lld %lld \n", nelm_indx, NROWS*NVL, dims2D); */
+
       dims2D = 0;
       for (j=0; j < nelm_indx ; j++) {
-	dims2D += nvl_len[jj];
+	dims2D += nvl_len[j];
       }
-      
+ 
+
       //  printf("nct %lld %lld %lld \n", nelm_indx, NROWS*NVL, dims2D);
       if(dims2D != NROWS*NVL){
 	printf("Failed VL sizes %lld %lld\n",dims2D,NROWS*NVL);
 	abort();
       }
 
-      space = H5Screate_simple (1, &dims2D, NULL);
-      dset  = H5Dcreate (file, DATASET, H5T_NATIVE_INT, space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      //      space = H5Screate_simple (1, &dims2D, NULL);
+      //  dset  = H5Dcreate (file, DATASET, H5T_NATIVE_INT, space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
       space_indx  = H5Screate_simple (1, &nelm_indx, NULL);
       dset_indx   = H5Dcreate (file, DATASET_INDX, H5T_NATIVE_INT, space_indx, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
-      wdata = (int *)malloc(dims2D*sizeof(int));
-      if(wdata) {
-	hsize_t icnt2 = 0;
-	for (i = 0; i <  nelm_indx; i++){
-	  NVL = nvl_len[i];
-	  nvl_len[i] = icnt2;
-	  // printf("aa %lld \n", nvl_len[i]);
-	  for (j = 0; j < NVL; j++) {
-	    *(wdata + nvl_len[i] + j) = NVL-j;
-	    //  printf("aa %lld %lld \n",i,NVL-j);
-	  }
-	  icnt2 = icnt2 + NVL;
-	}
-      } else {
-	printf("wdata malloc failed \n");
-	abort();
-      }
-      
       //   DSsize = H5Dget_storage_size(dset);
       /*
        * Write the data to the dataset.
        */
       gettimeofday(&tic, NULL);
 
-      status = H5Dwrite (dset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &wdata[0]);
-      status = H5Dclose (dset);
-      status = H5Sclose (space);
-      free(wdata);
-
       status = H5Dwrite (dset_indx, H5T_NATIVE_HSIZE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &nvl_len[0]);
       status = H5Dclose (dset_indx);
       status = H5Sclose (space_indx);
       free(nvl_len);
-#endif
       status = H5Fclose (file);
       
       gettimeofday(&toc, NULL);

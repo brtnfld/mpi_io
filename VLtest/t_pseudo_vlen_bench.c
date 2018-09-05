@@ -44,8 +44,8 @@ main (int argc, char *argv[] )
     int opt, cnt=0;
     double w=0., r=0.;
     hsize_t DSsize;
-    hsize_t NROWS = 4096; //4096;
-    hsize_t NVL = 4096; //4096;
+    hsize_t NROWS = 8; //4096; //4096;
+    hsize_t NVL = 4; //4096; //4096;
     struct timeval  tic, toc;
     hid_t   plist_id, fcpl;
     int write=0,read=0;
