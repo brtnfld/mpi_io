@@ -45,8 +45,8 @@ main (int argc, char *argv[] )
     int opt, cnt=0;
     double w=0., r=0.;
     hsize_t DSsize;
-    hsize_t NROWS = 8; //4096; //4096;
-    hsize_t NVL = 4; //4096; //4096;
+    hsize_t NROWS = 4096; //4096;
+    hsize_t NVL = 4096; //4096;
     struct timeval  tic, toc;
     hid_t   plist_id, fcpl;
     int write=0,read=0;
@@ -61,10 +61,7 @@ main (int argc, char *argv[] )
     bool vlvl = true;
 
     hsize_t start[1],
-      stride[1],
-      count[1],
-      block[1];
-
+      count[1];
 
     while ((opt = getopt(argc, argv, "rwv")) != -1) {
         cnt=cnt+1;
@@ -135,6 +132,7 @@ main (int argc, char *argv[] )
       int number = 0;
       int forend = 0;
       int jj=0;
+      w = 0.;
       for (j=0; j < nelm; j++) {
 
 	count[0] = (j/NVL%2?(NVL-1)-j%NVL:j%NVL+1);
@@ -203,13 +201,20 @@ main (int argc, char *argv[] )
 
 	mem_dataspace = H5Screate_simple (1, count, NULL);
 
+	gettimeofday(&tic, NULL);
 	status = H5Dwrite (dset, H5T_NATIVE_INT, mem_dataspace, space, H5P_DEFAULT, &wdata[0]);
 	if(status < 0) printf("H5Dwrite FAILED \n");
+
 	status = H5Dclose (dset);
 	status = H5Sclose (space);
 	status = H5Sclose (mem_dataspace);
 	status = H5Pclose (dcpl);
 	free(wdata);
+
+	gettimeofday(&toc, NULL);
+
+	w += (double) (toc.tv_usec - tic.tv_usec) / 1000000 + (double) (toc.tv_sec - tic.tv_sec);
+
 	if(forend == 1) break;
 	jj +=1;
       }
@@ -234,9 +239,6 @@ main (int argc, char *argv[] )
 	abort();
       }
 
-      //      space = H5Screate_simple (1, &dims2D, NULL);
-      //  dset  = H5Dcreate (file, DATASET, H5T_NATIVE_INT, space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-
       space_indx  = H5Screate_simple (1, &nelm_indx, NULL);
       dset_indx   = H5Dcreate (file, DATASET_INDX, H5T_NATIVE_INT, space_indx, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
@@ -254,12 +256,12 @@ main (int argc, char *argv[] )
       
       gettimeofday(&toc, NULL);
       
-      w = (double) (toc.tv_usec - tic.tv_usec) / 1000000 + (double) (toc.tv_sec - tic.tv_sec);
+      w += (double) (toc.tv_usec - tic.tv_usec) / 1000000 + (double) (toc.tv_sec - tic.tv_sec);
       H5Pclose(plist_id);
       H5Pclose(fcpl);
     } /* end write */
 
-
+    r = 0.;
     if(read) {
       /*
        * Open file and dataset.
@@ -269,35 +271,6 @@ main (int argc, char *argv[] )
       H5Pset_fapl_core(plist_id, core, 1);
 #endif
       file = H5Fopen (FILENAME, H5F_ACC_RDONLY, plist_id);
-      dset = H5Dopen (file, DATASET, H5P_DEFAULT);
-
-      /*
-       * Get dataspace and allocate memory for array of vlen structures.
-       * This does not actually allocate memory for the vlen data, that
-       * will be done by the library.
-       */
-      space = H5Dget_space (dset);
-      int ndims = H5Sget_simple_extent_dims (space, &dims2D, NULL);
-
-      rdata = (int *)malloc(dims2D*sizeof(int));
-      
-      /*
-       * Read the data.
-       */
-      gettimeofday(&tic, NULL);
-      status = H5Dread (dset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, &rdata[0]);
-      gettimeofday(&toc, NULL);
-      r = (double) (toc.tv_usec - tic.tv_usec) / 1000000 + (double) (toc.tv_sec - tic.tv_sec);
-      
-      /*
-       * Output the variable-length data to the screen.
-       */
-#if DEBUG
-      printf("Total %ld Bytes, VL read time = %f seconds\n",DSsize, r);
-#endif
-
-      status = H5Dclose (dset);
-      status = H5Sclose (space);
 
       dset = H5Dopen (file, DATASET_INDX, H5P_DEFAULT);
 
@@ -307,14 +280,15 @@ main (int argc, char *argv[] )
        * will be done by the library.
        */
       space = H5Dget_space (dset);
-      ndims = H5Sget_simple_extent_dims (space, dims, NULL);
+      int ndims = H5Sget_simple_extent_dims (space, dims, NULL);
       rdata_indx = (hsize_t *)malloc(dims[0]*sizeof(hsize_t));
       /*
        * Read the data.
        */
       gettimeofday(&tic, NULL);
       status = H5Dread (dset, H5T_NATIVE_HSIZE, H5S_ALL, H5S_ALL, H5P_DEFAULT, &rdata_indx[0]);
-      
+      gettimeofday(&toc, NULL);
+      r += (double) (toc.tv_usec - tic.tv_usec) / 1000000 + (double) (toc.tv_sec - tic.tv_sec);
       /*
        * Output the variable-length data to the screen.
        */
@@ -341,9 +315,60 @@ main (int argc, char *argv[] )
       status = H5Dclose (dset);
       status = H5Sclose (space);
 
+      dset = H5Dopen (file, DATASET2, H5P_DEFAULT);
+
+      /*
+       * Get dataspace and allocate memory for array of vlen structures.
+       * This does not actually allocate memory for the vlen data, that
+       * will be done by the library.
+       */
+      space = H5Dget_space (dset);
+      ndims = H5Sget_simple_extent_dims (space, &dims2D, NULL);
+
+      
+      start[0] = 0;
+      for (j=0; j<dims[0] ; j++) {
+
+	rdata = (int *)malloc(rdata_indx[j]*sizeof(int));
+	mem_dataspace = H5Screate_simple (1, &rdata_indx[j], NULL);
+	count[0] = rdata_indx[j];
+	if (j != 0) {
+	    start[0] += rdata_indx[j-1];
+	}
+	//	printf("start,count %lld %lld \n",start[0], count[0]);
+	status = H5Sselect_hyperslab (space, H5S_SELECT_SET, start, NULL, count, NULL);
+
+      /*
+       * Read the data.
+       */
+	gettimeofday(&tic, NULL);
+	status = H5Dread (dset, H5T_NATIVE_INT, mem_dataspace, space, H5P_DEFAULT, &rdata[0]);
+	gettimeofday(&toc, NULL);
+
+	r += (double) (toc.tv_usec - tic.tv_usec) / 1000000 + (double) (toc.tv_sec - tic.tv_sec);
+
+#if DEBUG
+	printf (" {");
+	for (i=0; i<count[0]; i++) {
+	  printf(" %d ",rdata[i]);
+	}
+	printf (" }\n");
+#endif
+	status = H5Sclose (mem_dataspace);
+	free (rdata);
+      }
+
+      /*
+       * Output the variable-length data to the screen.
+       */
+#if DEBUG
+      printf("Total %ld Bytes, VL read time = %f seconds\n",DSsize, r);
+#endif
+
+      status = H5Dclose (dset);
+      status = H5Sclose (space);
+
       status = H5Fclose (file);
-      gettimeofday(&toc, NULL);
-      r = r + (double) (toc.tv_usec - tic.tv_usec) / 1000000 + (double) (toc.tv_sec - tic.tv_sec);
       status = H5Pclose (plist_id);
       
       /*
@@ -357,7 +382,6 @@ main (int argc, char *argv[] )
        * top-level pointer "rdataVL", as H5Dvlen_reclaim only frees the
        * actual variable-length data, and not the structures themselves.
        */
-      free (rdata);
 
     }
 
