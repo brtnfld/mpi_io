@@ -12,7 +12,8 @@ PROGRAM case1
   use iso_fortran_env
   IMPLICIT NONE
 
-  INTEGER(KIND=int64) ,PARAMETER :: N = 524288_int64
+!  INTEGER(KIND=int64) ,PARAMETER :: N = 524288_int64
+  INTEGER, PARAMETER :: N = 524288
 
   INTEGER, DIMENSION(mpi_status_size) :: wstatus
   INTEGER :: fh,i
@@ -93,7 +94,7 @@ PROGRAM case1
   CALL MPI_reduce(t, t3, 1, MPI_DOUBLE_PRECISION, MPI_MAX, 0, MPI_COMM_WORLD, ierr);
 
   IF(rank.EQ.0)THEN
-     PRINT*,"TIMING = ", t1/DBLE(nprocs), t2, t3
+    WRITE(*,'(3F14.6)') t1/DBLE(nprocs), t2, t3
   ENDIF
     
   CALL MPI_Finalize(ierr)
