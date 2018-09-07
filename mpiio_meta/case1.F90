@@ -37,7 +37,7 @@ PROGRAM case1
   CALL MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
 
   narg = 0
-  argv=""
+  argv(1:1)=""
   DO
      CALL get_command_argument(narg, arg)
      IF (LEN_TRIM(arg) == 0) EXIT
@@ -67,6 +67,7 @@ PROGRAM case1
   t(1) = 0.
 
   IF( narg .EQ. 1)THEN
+     argv(1:1)="0"
      CALL MPI_File_open(MPI_COMM_WORLD, "datafile.mpio",     &
           MPI_MODE_RDWR, &
           MPI_INFO_NULL, fh, ierr)
@@ -169,7 +170,7 @@ PROGRAM case1
   CALL MPI_reduce(t, t3, 1, MPI_DOUBLE_PRECISION, MPI_MAX, 0, MPI_COMM_WORLD, ierr);
 
   IF(rank.EQ.0)THEN
-    WRITE(*,'(3F14.6)') t1/DBLE(nprocs), t2, t3
+    WRITE(*,'(I0,X,A,3F14.6)') nprocs, argv(1:1), t1/DBLE(nprocs), t2, t3
   ENDIF
     
   CALL MPI_Finalize(ierr)
