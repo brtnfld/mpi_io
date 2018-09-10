@@ -28,7 +28,7 @@ case1: $(OBJF90)
 	$(CC) $(CFLAGS) -c  $< -o $@
 
 clean:
-	rm -f  case 1  *.o *.mod 
+	rm -f  case1  *.o *.mod 
 
 spotless:
 	rm -f  *.o *.mod case1 *~ timing datafile.mpio

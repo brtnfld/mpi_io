@@ -1,6 +1,5 @@
 #define DEBUG 0
 
-
 PROGRAM case1
 
   USE mpi
@@ -12,10 +11,10 @@ PROGRAM case1
   INTEGER, PARAMETER :: N = 524288
 
   INTEGER, DIMENSION(mpi_status_size) :: wstatus
-  INTEGER :: fh,i
+  INTEGER :: fh, k, i
   INTEGER :: ierr, rank
   
-  INTEGER(KIND=MPI_OFFSET_KIND) :: offset
+  INTEGER(KIND=MPI_OFFSET_KIND) :: offset = 0
   INTEGER, PARAMETER :: bufsize = 8
   INTEGER :: fullbufsize
   INTEGER, DIMENSION(1:bufsize) :: buf
@@ -23,15 +22,12 @@ PROGRAM case1
   DOUBLE PRECISION, DIMENSION(1:1) :: t
   DOUBLE PRECISION :: t1, t2, t3
   CHARACTER(len=1) :: argv
-  LOGICAL :: exist
   CHARACTER(len=128) :: arg
-  INTEGER k
   INTEGER nprocs
 
   INTEGER*4, DIMENSION(1:N) :: ndata
-  INTEGER:: proc_cnt
-  INTEGER :: incr, icnt, narg
-
+  INTEGER :: icnt, narg
+  INTEGER :: incr = 64
   CALL MPI_Init(ierr)
   CALL MPI_Comm_size(MPI_COMM_WORLD, nprocs, ierr)
   CALL MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
@@ -44,7 +40,9 @@ PROGRAM case1
      argv(1:1) = arg(1:1)
      narg = narg + 1
   END DO
-
+!
+! Create the file on one process
+!
   IF(rank.EQ.0)THEN
 
      CALL MPI_File_open(MPI_COMM_SELF, "datafile.mpio",     &
@@ -61,16 +59,21 @@ PROGRAM case1
   ENDIF
 
   CALL MPI_Barrier(MPI_COMM_WORLD, ierr)
-
+!
+! Read the file
+!  Option 0 -- All the processes read the same data
+!  Option 1 -- Read all the metadata on one process, then Bcast all the metadata (i.e. using one Bcast).
+!  Option 2 -- Read one metadata entry on one process, then Bcast that metadata immediately. 
+!              Repeat until all the metadata has been read.
   incr = 64
-  offset = 0
   t(1) = 0.
+
+! OPTION 0
 
   IF( narg .EQ. 1)THEN
      argv(1:1)="0"
      CALL MPI_File_open(MPI_COMM_WORLD, "datafile.mpio",     &
-          MPI_MODE_RDWR, &
-          MPI_INFO_NULL, fh, ierr)
+          MPI_MODE_RDWR, MPI_INFO_NULL, fh, ierr)
      
      DO k = 1, N, incr
         CALL MPI_File_set_view(fh, offset, MPI_INTEGER, MPI_INTEGER, "native", MPI_INFO_NULL, ierr)
@@ -78,7 +81,6 @@ PROGRAM case1
         CALL MPI_File_read_all(fh, buf, bufsize, MPI_INTEGER, wstatus, ierr );
         t(1) = t(1) + (MPI_Wtime() - t1);
         offset = offset + incr*sizeof(k)
-
 #if DEBUG
         IF(rank.EQ.1)THEN
            DO i = 1, bufsize
@@ -90,9 +92,6 @@ PROGRAM case1
 
      CALL MPI_File_close(fh, ierr)
   ENDIF
-
-! Read on proc 0, and broadcast
-
 
 ! OPTION 1
 
