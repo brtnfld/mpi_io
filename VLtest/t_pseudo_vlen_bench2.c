@@ -32,7 +32,7 @@ main (int argc, char *argv[] )
 {
     FILE * pFile;
 
-    hid_t       file, space, dset, dcpl,mem_dataspace;
+    hid_t       file, space, dset, dcpl, dapl,mem_dataspace;
                                     
     hid_t       space_indx, dset_indx;/* Handles */
     herr_t      status;
@@ -55,8 +55,13 @@ main (int argc, char *argv[] )
     hsize_t nelm;
     hsize_t nelm_indx = 0;
     hsize_t maxdims[1];
-    hsize_t extdims[1],
-      chunk[1] = {16};
+    hsize_t extdims[1],extdims2[1],
+      chunk[1] = {NVL/8};
+
+    hsize_t iext;
+
+    size_t nslots;
+    size_t nbytes;
     
     bool vlvl = true;
 
@@ -129,6 +134,7 @@ main (int argc, char *argv[] )
       int dir = 0;
       dims2D = 0;
       extdims[0]=1;
+      extdims2[0]=1;
       int number = 0;
       int forend = 0;
       int jj=0;
@@ -164,19 +170,38 @@ main (int argc, char *argv[] )
 	//	  dims2D += nvl_len[j];
 	  //	}
 
-
 	dcpl = H5Pcreate (H5P_DATASET_CREATE);
 	status = H5Pset_chunk (dcpl, 1, chunk);
+	dapl = H5Pcreate(H5P_DATASET_ACCESS);
+	
+	nslots = 100*chunk[0];
+	nbytes = 1048576*4;
+	status = H5Pset_chunk_cache(dapl, nslots, nbytes, H5D_CHUNK_CACHE_W0_DEFAULT);
+	
+
+	iext = chunk[0];
 
 	if(j == 0) {
 	  maxdims[0] = H5S_UNLIMITED;
-	  space = H5Screate_simple (1, &nvl_len[jj], maxdims);
-	  dset  = H5Dcreate (file, DATASET2, H5T_NATIVE_INT, space, H5P_DEFAULT, dcpl, H5P_DEFAULT);
+	  //  space = H5Screate_simple (1, &nvl_len[jj], maxdims);
+	  space = H5Screate_simple (1, &iext, maxdims);
+	  extdims[0] = nvl_len[jj];
+	  dset  = H5Dcreate (file, DATASET2, H5T_NATIVE_INT, space, H5P_DEFAULT, dcpl, dapl);
 	} else {
-	  extdims[0] +=  count[0];
-	  //  printf("extdims %lld \n", extdims[0]);
-	  dset = H5Dopen (file, DATASET2, H5P_DEFAULT);
-	  status = H5Dset_extent (dset, extdims);
+	  dset = H5Dopen (file, DATASET2, dapl );
+
+	  
+	  if( (extdims[0] + count[0]) >= iext ) {
+	    //  printf("extdims %lld  \n", (((extdims[0] + count[0]) - iext)/chunk[0] + 1));
+	    extdims[0] = iext + (((extdims[0] + count[0]) - iext)/chunk[0] + 1)*chunk[0];
+	    //printf("extdims %lld \n", extdims[0]);
+	    status = H5Dset_extent (dset, extdims);
+	    iext = extdims[0];
+	    //  abort();
+	  } else {
+	    extdims[0] += count[0];
+	  }
+
 	  space = H5Dget_space (dset);
 	}
 	//	count[0] = nvl_len[j];
@@ -205,10 +230,11 @@ main (int argc, char *argv[] )
 	status = H5Dwrite (dset, H5T_NATIVE_INT, mem_dataspace, space, H5P_DEFAULT, &wdata[0]);
 	if(status < 0) printf("H5Dwrite FAILED \n");
 
+	status = H5Sclose (mem_dataspace);
 	status = H5Dclose (dset);
 	status = H5Sclose (space);
-	status = H5Sclose (mem_dataspace);
 	status = H5Pclose (dcpl);
+	H5Pclose(dapl);
 	free(wdata);
 
 	gettimeofday(&toc, NULL);
@@ -238,7 +264,6 @@ main (int argc, char *argv[] )
 	printf("Failed VL sizes %lld %lld\n",dims2D,NROWS*NVL);
 	abort();
       }
-
       space_indx  = H5Screate_simple (1, &nelm_indx, NULL);
       dset_indx   = H5Dcreate (file, DATASET_INDX, H5T_NATIVE_INT, space_indx, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
@@ -315,7 +340,13 @@ main (int argc, char *argv[] )
       status = H5Dclose (dset);
       status = H5Sclose (space);
 
-      dset = H5Dopen (file, DATASET2, H5P_DEFAULT);
+
+      dapl = H5Pcreate(H5P_DATASET_ACCESS);
+      nslots = 100*chunk[0];
+      nbytes = 1048576*4;
+      status = H5Pset_chunk_cache(dapl, nslots, nbytes, H5D_CHUNK_CACHE_W0_DEFAULT);
+
+      dset = H5Dopen(file, DATASET2, dapl);
 
       /*
        * Get dataspace and allocate memory for array of vlen structures.
@@ -367,6 +398,7 @@ main (int argc, char *argv[] )
 
       status = H5Dclose (dset);
       status = H5Sclose (space);
+      status = H5Pclose (dapl);
 
       status = H5Fclose (file);
       status = H5Pclose (plist_id);
