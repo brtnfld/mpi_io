@@ -17,3 +17,4 @@ t_vlen_bench2: t_vlen_bench2.o
 clean:
 	-rm -f t_vlen_bench2 t_vlen_bench2.o
 	-rm -f t_pseudo_vlen_bench t_pseudo_vlen_bench.o
+	-rm -f t_pseudo_vlen_bench2 t_pseudo_vlen_bench2.o
