@@ -86,6 +86,7 @@ PROGRAM case1
 
   t(1) = (MPI_Wtime() - t1)
 
+  CALL MPI_Barrier(MPI_COMM_WORLD, ierr)
 ! read-proc0-and-bcast
 
   t1 = MPI_Wtime()
