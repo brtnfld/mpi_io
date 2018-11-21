@@ -21,7 +21,7 @@
 #define DATASET         "DS1"
 
 /**** PROGRAM PARAMETERS *****/
-#define DIM0            8388608 /* data buffer size 0-dir */
+#define DIM0            65536 //8388608 /* data buffer size 0-dir */
 #define DIM1            2048 /* data buffer size 1-dir */
 #define CHUNK0          16384 /* chunk size in 0-dir = DIM0/CHUNK0 */
 #define CHUNK1          1 /* chunk size in 1-dir = DIM1/CHUNK1 */
@@ -90,8 +90,10 @@ main (int argc, char **argv)
         return 1;
     }
 
-    if(mpi_rank == 0)
+    if(mpi_rank == 0) {
       printf("chunk size (MB) = %d\n ", DIM0/CHUNK0*DIM1/CHUNK1*sizeof(int)/1048576);
+      printf("%d %d \n",DIM0/CHUNK0*DIM1/CHUNK1*sizeof(int),1048576);
+    }
     
     /*
      * Create a new file using the default properties.
