@@ -4,8 +4,13 @@ ifeq ($(findstring edison, $(HOST)),edison)
  CC = cc
  FC = ftn
 else
- CC = mpicc
- FC = mpif90
+ ifeq ($(findstring cetus, $(HOST)),cetus)
+   CC = mpixlc
+   FC = mpixlf90
+ else
+   CC = mpicc
+   FC = mpif90
+ endif
 endif
 
 F90FLAGS = -O3

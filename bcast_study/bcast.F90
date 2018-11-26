@@ -15,6 +15,7 @@ PROGRAM case1
   DOUBLE PRECISION, DIMENSION(1:2) :: t, tg1, tg2, tg3
   DOUBLE PRECISION :: t1
   CHARACTER(len=32) :: arg
+  character(len=128) filename
   INTEGER nprocs
   INTEGER ndim
 
@@ -28,17 +29,19 @@ PROGRAM case1
      CALL get_command_argument(1, arg)
      READ(arg(1:32),'(I32)') ndim
   ELSE
+     arg(1:2) = "16"
      ndim = 16
   ENDIF
+  filename = TRIM(arg)//".mpio"
 
   ALLOCATE(ndata(1:ndim))
-
+  
 !
 ! Create the file on one process
 !
   IF(rank.EQ.0)THEN
 
-     CALL MPI_File_open(MPI_COMM_SELF, "datafile.mpio",     &
+     CALL MPI_File_open(MPI_COMM_SELF, filename,     &
           IOR(MPI_MODE_CREATE,MPI_MODE_WRONLY), &
           MPI_INFO_NULL, fh, ierr)
 
@@ -63,7 +66,7 @@ PROGRAM case1
 
   t1 = MPI_Wtime()
 
-  CALL MPI_File_open(MPI_COMM_WORLD, "datafile.mpio",     &
+  CALL MPI_File_open(MPI_COMM_WORLD, filename,     &
        MPI_MODE_RDWR, MPI_INFO_NULL, fh, ierr)
      
   CALL MPI_File_set_view(fh, offset, MPI_INTEGER, MPI_INTEGER, "native", MPI_INFO_NULL, ierr)
