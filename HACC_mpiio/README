@@ -1,0 +1,28 @@
+Sample_mpio_measure_time.c -- independent IO 
+Sample_mpio_measure_time_collective.c - collective IO
+
+0. Simulate 9-variable Generic IO.
+
+1. Compile
+   mpicc Sample_***.c
+2. Run 
+For the interleaved pattern
+   mpirun -np 4 ./a.out -i
+For the contiguous pattern
+   mpirun -np 4 ./a.out -c
+
+3. File Size
+The output file size is 45GB.
+
+To change the file size, edit the Sample_***.c,
+change the following line:
+
+    int64_t  buf_size = 5368709120LL;
+
+to your own number.
+
+4. For collective IO, the following MPI hints are added. They can be commented out as needed.
+    MPI_Info_set(info,"romio_cb_write","enable");
+    MPI_Info_set(info,"cray_cb_write_lock_mode","2");
+    MPI_Info_set(info,"cray_cb_nodes_multiplier","2");
+
