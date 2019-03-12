@@ -264,8 +264,9 @@ int main(int ac, char **av)
             if(mpi_rank == 0) 
                 printf("coming to contiguous pattern\n");
 
+            mpiio_stime = MPI_Wtime();
             if(hdf5) {
-              
+               
               for (i=0; i < num_vars; i++) {
                 dset_id = H5Dopen(file_id, DATASETNAME[i], H5P_DEFAULT);
 
@@ -291,7 +292,6 @@ int main(int ac, char **av)
               }
             } else {
               mpi_off = buf_size_per_proc*mpi_rank;
-              mpiio_stime = MPI_Wtime(); 
               for (i=0; i < num_vars; i++) {
                 if ((mpi_err = MPI_File_write_at(fh, mpi_off, writedata, buf_size_per_proc, MPI_BYTE,
                                                  &mpi_stat))
@@ -314,7 +314,8 @@ int main(int ac, char **av)
 
             if(mpi_rank == 0) 
                 printf("Coming to the interleaved pattern.\n");
-
+ 
+            mpiio_stime = MPI_Wtime();
             if(hdf5) {
 
               dset_id = H5Dopen(file_id, "ALLVAR", H5P_DEFAULT);
@@ -342,8 +343,7 @@ int main(int ac, char **av)
             } else {
               
               // Each process has a contiuous write.
-              mpi_off = mpi_rank*buf_size_per_proc*num_vars; 
-              mpiio_stime = MPI_Wtime();
+              mpi_off = mpi_rank*buf_size_per_proc*num_vars;
               for (i=0; i < num_vars; i++) {
                 if ((mpi_err = MPI_File_write_at(fh, mpi_off, writedata, buf_size_per_proc, MPI_BYTE,
                                                  &mpi_stat))
