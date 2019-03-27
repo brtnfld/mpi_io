@@ -58,7 +58,7 @@ PROGRAM case2
   INTEGER(KIND=MPI_OFFSET_KIND) f_sz
   INTEGER nprocs
 
-  INTEGER(KIND=int64), DIMENSION(1:2) :: mb_offsets
+  INTEGER(KIND=MPI_OFFSET_KIND), DIMENSION(1:2) :: mb_offsets
   INTEGER(KIND=int64) :: mb_size
 
   ! timing data
@@ -146,7 +146,7 @@ PROGRAM case2
      CALL MPI_File_set_view(fh, mb_offsets(rank+1), MPI_INTEGER, MPI_INTEGER, "native", MPI_INFO_NULL, ierr)
      CALL MPI_File_write_all(fh, pgbuf, n_pgbuf, MPI_INTEGER, wstatus, ierr)
   ELSE
-     CALL MPI_File_set_view(fh, 0, MPI_INTEGER, MPI_INTEGER, "native", MPI_INFO_NULL, ierr)
+     CALL MPI_File_set_view(fh, 0_MPI_OFFSET_KIND, MPI_INTEGER, MPI_INTEGER, "native", MPI_INFO_NULL, ierr)
      CALL MPI_File_write_all(fh, pgbuf, 0, MPI_INTEGER, wstatus, ierr)
   ENDIF
 
