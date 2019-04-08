@@ -40,6 +40,7 @@ int main(int ac, char **av)
     int  mpi_err_strlen;
     int  mpi_err;
     char expect_val;
+    double dexpect_val;
     int  i=0 ; 
     int  nerrors = 0;		/* number of errors */
     /* buffer size is the total size for one variable. */
@@ -50,12 +51,12 @@ int main(int ac, char **av)
     // 1Gib = 1073741824
     // 9*1073741824 ( 9 GB total, 1GB per var.)
     
-    int64_t buf_size = 9663676416LL;
+    //int64_t buf_size = 9663676416LL;
     
     //int64_t buf_size = 36864LL;
 
     //For debugging uncomment the following line
-    //int64_t  buf_size = 1024LL;
+    int64_t  buf_size = 1024LL;
     
     /* Number of variables, currently is 9 like Generic IO. */
     int num_vars  = 9;
@@ -64,6 +65,7 @@ int main(int ac, char **av)
     MPI_Status  mpi_stat;
     char* writedata = NULL;
     double *writedata2;
+    double *readdata;
 
     int64_t buf_size_per_proc = 0;
     double mpiio_stime =0;
@@ -117,6 +119,7 @@ int main(int ac, char **av)
     hacc_t *Hdata;
     hid_t Hmemtype;
     hid_t Hfiletype;
+    hid_t rtype;
 
     
     MPI_Init(&ac, &av);
@@ -250,8 +253,8 @@ int main(int ac, char **av)
         }
 
       }
-        file_dims[0] = mem_dims[0]*mpi_size;
-        file_space_id = H5Screate_simple(1, file_dims, NULL);
+      file_dims[0] = mem_dims[0]*mpi_size;
+      file_space_id = H5Screate_simple(1, file_dims, NULL);
 
 
     } else {
@@ -383,9 +386,7 @@ int main(int ac, char **av)
   
   	}
   
-  	free(writedata);
-
-
+    free(writedata);
 
         if(hdf5) {
           /* Close file dataspace */
@@ -395,8 +396,108 @@ int main(int ac, char **av)
           MPI_File_close(&fh);
         }
 
+        mpiio_stime = MPI_Wtime();
+        /* Read one variable from the file */
+        file_id = H5Fopen(filename, H5F_ACC_RDONLY, H5P_DEFAULT);
+        
+        if(strcmp(av[1],"-c")==0) {
 
-  	MPI_Finalize();
+          
+          file_dims[0] = mem_dims[0]*mpi_size;
+          file_space_id = H5Screate_simple(1, file_dims, NULL);
+
+          dset_id = H5Dopen(file_id, "x", H5P_DEFAULT);
+          mem_space_id = H5Screate_simple(1, mem_dims, NULL);
+          
+          /* Select column of elements in the file dataset */
+          file_start[0] = mpi_rank*mem_dims[0];
+          file_count[0] = mem_dims[0];
+          ret = H5Sselect_hyperslab(file_space_id, H5S_SELECT_SET, file_start, NULL, file_count, NULL);
+          /* Select all elements in the memory buffer */
+          mem_start[0] = 0;
+          mem_count[0] = mem_dims[0];
+          ret = H5Sselect_hyperslab(mem_space_id, H5S_SELECT_SET, mem_start, NULL, mem_count, NULL);
+          
+
+          readdata = malloc(buf_size*num_vars/mpi_size);
+          
+          /* Read data independently */
+          ret = H5Dread(dset_id, H5T_NATIVE_DOUBLE, mem_space_id, file_space_id, H5P_DEFAULT, readdata);
+          /* Close memory dataspace */
+          ret = H5Sclose(mem_space_id);
+          /* Close dataset collectively */
+          ret = H5Dclose(dset_id);
+          ret = H5Sclose(file_space_id);
+          ret = H5Fclose(file_id);
+
+        } else if(strcmp(av[1],"-i")==0) {
+          
+          
+          file_dims[0] = mem_dims[0]*mpi_size;
+          file_space_id = H5Screate_simple(1, file_dims, NULL);
+
+          dset_id = H5Dopen(file_id, "ALLVAR", H5P_DEFAULT);
+
+          rtype = H5Tcreate (H5T_COMPOUND, sizeof (double));
+          
+          H5Tinsert (rtype, "x", 0, H5T_NATIVE_DOUBLE);
+
+          mem_space_id = H5Screate_simple(1, mem_dims, NULL);
+          
+          /* Select column of elements in the file dataset */
+          file_start[0] = mpi_rank*mem_dims[0];
+          file_count[0] = mem_dims[0];
+          ret = H5Sselect_hyperslab(file_space_id, H5S_SELECT_SET, file_start, NULL, file_count, NULL);
+          /* Select all elements in the memory buffer */
+          mem_start[0] = 0;
+          mem_count[0] = mem_dims[0];
+          ret = H5Sselect_hyperslab(mem_space_id, H5S_SELECT_SET, mem_start, NULL, mem_count, NULL);
+          
+
+          readdata = malloc(buf_size*num_vars/mpi_size);
+          
+          /* Read data independently */
+          ret = H5Dread(dset_id, rtype, mem_space_id, file_space_id, H5P_DEFAULT, readdata);
+          /* Close memory dataspace */
+          ret = H5Sclose(mem_space_id);
+          /* Close dataset collectively */
+          ret = H5Dclose(dset_id);
+          ret = H5Sclose(file_space_id);
+          ret = H5Tclose(rtype);
+          ret = H5Fclose(file_id);
+
+        }
+        mpiio_etime = MPI_Wtime();
+
+        total_time = mpiio_etime - mpiio_stime;
+
+   	MPI_Reduce(&total_time, &Max_total_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+    	MPI_Reduce(&total_time, &Sum_total_time, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+    	MPI_Reduce(&total_time, &Min_total_time, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+    	if(mpi_rank == 0) {
+          rate = (double)(buf_size*num_vars)/Max_total_time/(1024.*1024.);
+          printf("********** \n %d Procs %s READ %d variables in %f seconds. \n",mpi_size,av[1], num_vars,Max_total_time);
+          printf(" Bandwidth is %f MB/s.\n",rate);
+          printf("Total IO time for all processes is %f seconds.\n",Sum_total_time);
+          printf("Minimum IO time for all processes is %f seconds.\n",Min_total_time);
+          rate = (double)(buf_size*num_vars)/(Sum_total_time/mpi_size)/(1024.*1024.);
+          printf("Average IO time for all processes is %f seconds.\n",Sum_total_time/mpi_size);
+          printf(" Average Bandwidth is %f MB/s.\n",rate);
+          
+        }	
+
+        for (i=0; i < mem_count[0]; i++){
+          // printf("%f \n", (double)i+1.+(double)mpi_rank/1000.);
+          dexpect_val = (double)((double)i+1.+(double)mpi_rank/1000.);
+          if (readdata[i] != dexpect_val){
+            PRINTID;
+            printf("read data[%d:%d] got %f, expect %f\n", mpi_rank, i,
+                   readdata[i], expect_val);
+            nerrors++;
+          }
+	}
+        free(readdata);
+  
 #if 0
     /* each process reads all data and verify. */
     for (irank=0; irank < mpi_size; irank++){
@@ -426,5 +527,7 @@ int main(int ac, char **av)
 #endif
 
 
-  	return 0;
+MPI_Finalize();
+
+return 0;
 }
