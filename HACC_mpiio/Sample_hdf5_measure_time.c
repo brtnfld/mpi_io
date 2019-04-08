@@ -22,6 +22,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <mpi.h>
+#include <math.h>
 #ifndef MPI_FILE_NULL           /*MPIO may be defined in mpi.h already       */
 #   include <mpio.h>
 #endif
@@ -31,6 +32,13 @@
 #define RANK 1
 
 #define PRINTID printf("Proc %d: ", mpi_rank)
+
+
+bool dequal(double a, double b, double epsilon)
+{
+ return fabs(a-b) < epsilon;
+}
+
 
 int main(int ac, char **av)
 {
@@ -53,10 +61,10 @@ int main(int ac, char **av)
     
     //int64_t buf_size = 9663676416LL;
     
-    //int64_t buf_size = 36864LL;
+    int64_t buf_size = 36864LL;
 
     //For debugging uncomment the following line
-    int64_t  buf_size = 1024LL;
+    //int64_t  buf_size = 1024LL;
     
     /* Number of variables, currently is 9 like Generic IO. */
     int num_vars  = 9;
@@ -126,6 +134,11 @@ int main(int ac, char **av)
     MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
 
+    if (ac==1){
+      if (mpi_rank==0) printf("REQUIRES INPUT ARGUMENT -c or -i \n");
+      MPI_Abort(MPI_COMM_WORLD, 1);
+    }
+
     /* Buffer size per process per variable, The smallest unit for one process to write */
     buf_size_per_proc = buf_size/mpi_size;
 
@@ -135,6 +148,7 @@ int main(int ac, char **av)
         printf(" This tests the MPIO different patterns for 9 variables with MPIO write.\n");
         printf("There are four patterns. -c 9 contiguous writes -i 9 interleaved writes -p 3 writes -t 1 write.\n");
     }
+
 
 
     if(hdf5) {
@@ -488,8 +502,8 @@ int main(int ac, char **av)
 
         for (i=0; i < mem_count[0]; i++){
           // printf("%f \n", (double)i+1.+(double)mpi_rank/1000.);
-          dexpect_val = (double)((double)i+1.+(double)mpi_rank/1000.);
-          if (readdata[i] != dexpect_val){
+          dexpect_val = ((double)i+1.0+(double)mpi_rank/1000.0);
+          if(!dequal(readdata[i], dexpect_val, 1.0e-6)) {
             PRINTID;
             printf("read data[%d:%d] got %f, expect %f\n", mpi_rank, i,
                    readdata[i], expect_val);
