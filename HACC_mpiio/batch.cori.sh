@@ -12,13 +12,15 @@
 ##SBATCH -p regular
 #SBATCH -p debug
 
-module load darshan
+#module load darshan
 
-export MPICH_MPIIO_STATS=1
-export MPICH_MPIIO_HINTS_DISPLAY=1
-export MPICH_MPIIO_TIMERS=1
-export DARSHAN_DISABLE_SHARED_REDUCTION=1
-export DXT_ENABLE_IO_TRACE=4
+#export MPICH_MPIIO_STATS=1
+#export MPICH_MPIIO_HINTS_DISPLAY=1
+#export MPICH_MPIIO_TIMERS=1
+#export DARSHAN_DISABLE_SHARED_REDUCTION=1
+#export DXT_ENABLE_IO_TRACE=4
+cleanup=yes
+export HDF5_USE_FILE_LOCKING=FALSE
 
 cd $SCRATCH
 WRKDIR=$SCRATCH/$SLURM_JOB_ID
@@ -27,12 +29,22 @@ tsk=$SLURM_NTASKS
 lfs setstripe -c 12 -S 16m $WRKDIR
 cd $WRKDIR
 cmdw="a.out"
-cleanup=yes
 cp $SLURM_SUBMIT_DIR/$cmdw .
-
-#srun -n $tsk ./$cmdw -i
+srun -n $tsk ./$cmdw -i
+ls -aolF mpitest.data
+rm -f mpitest.data
 srun -n $tsk ./$cmdw -c
+ls -aolF mpitest.data
+rm -f mpitest.data
 
+cmdw="ampi.out"
+cp $SLURM_SUBMIT_DIR/$cmdw .
+srun -n $tsk ./$cmdw -i
+ls -aolF mpitest.data
+rm -f mpitest.data
+srun -n $tsk ./$cmdw -c
+ls -aolF mpitest.data
+rm -f mpitest.data
 echo $PWD
 cd $SLURM_SUBMIT_DIR
 if [ -n "$cleanup" ]; then

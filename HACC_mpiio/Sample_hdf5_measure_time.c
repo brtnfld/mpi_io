@@ -59,9 +59,9 @@ int main(int ac, char **av)
     // 1Gib = 1073741824
     // 9*1073741824 ( 9 GB total, 1GB per var.)
     
-    //   int64_t buf_size = 9663676416LL;
-    
-    int64_t buf_size = 36864LL;
+    //int64_t buf_size = 9663676416LL;
+    int64_t buf_size = 48318382080LL; 
+    //int64_t buf_size = 36864LL;
 
     //For debugging uncomment the following line
     //int64_t  buf_size = 1024LL;
