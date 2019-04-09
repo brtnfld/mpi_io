@@ -62,6 +62,7 @@ int main(int ac, char **av)
     double Min_total_time = 0;
     double Sum_total_time = 0;
     double rate = 0;
+    FILE *pFile;
 
 
     MPI_Init(&ac, &av);
@@ -76,6 +77,7 @@ int main(int ac, char **av)
 	    mpi_size, filename);
         printf(" This tests the MPIO different patterns for 9 variables with MPIO write.\n");
         printf("There are four patterns. -c 9 contiguous writes -i 9 interleaved writes -p 3 writes -t 1 write.\n");
+        pFile = fopen("timing.txt", "a");
     }
 
 
@@ -220,10 +222,13 @@ int main(int ac, char **av)
       		rate = (double)(buf_size*num_vars)/(Sum_total_time/mpi_size)/(1024.*1024.);
       		printf("Average IO time for all processes is %f seconds.\n",Sum_total_time/mpi_size);
       		printf(" Average Bandwidth is %f MB/s.\n",rate);
+
+                
+                fprintf(pFile, "%s w %d %f %f\n", av[1], mpi_size, rate, Max_total_time);
+                fclose(pFile);
+        }	
   
-   		}	
-  
-  	}
+    }
   
   	free(writedata);
 

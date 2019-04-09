@@ -43,6 +43,7 @@ bool dequal(double a, double b, double epsilon)
 int main(int ac, char **av)
 {
     MPI_File fh;
+    FILE *pFile;
     char *filename = "./mpitest.data";
     char mpi_err_str[MPI_MAX_ERROR_STRING];
     int  mpi_err_strlen;
@@ -143,12 +144,9 @@ int main(int ac, char **av)
     buf_size_per_proc = buf_size/mpi_size;
 
     if (mpi_rank==0){
-	    printf("Testing simple C MPIO program with %d processes accessing file %s\n",
-	    mpi_size, filename);
-        printf(" This tests the MPIO different patterns for 9 variables with MPIO write.\n");
-        printf("There are four patterns. -c 9 contiguous writes -i 9 interleaved writes -p 3 writes -t 1 write.\n");
+	    printf("Testing simple C MPIO program with %d processes accessing file %s\n",mpi_size, filename);
+        pFile = fopen("timing.txt", "a");
     }
-
 
 
     if(hdf5) {
@@ -396,6 +394,8 @@ int main(int ac, char **av)
       		printf("Average IO time for all processes is %f seconds.\n",Sum_total_time/mpi_size);
       		printf(" Average Bandwidth is %f MB/s.\n",rate);
   
+                fprintf(pFile, " %s w %d %f %f\n", av[1], mpi_size, rate, Max_total_time);
+
    		}	
   
   	}
@@ -498,6 +498,8 @@ int main(int ac, char **av)
           printf("Average IO time for all processes is %f seconds.\n",Sum_total_time/mpi_size);
           printf(" Average Bandwidth is %f MB/s.\n",rate);
           
+          fprintf(pFile, "%s r %d %f %f\n", av[1], mpi_size, rate, Max_total_time);
+          fclose(pFile);
         }	
 
         for (i=0; i < mem_count[0]; i++){

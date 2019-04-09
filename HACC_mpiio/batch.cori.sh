@@ -20,6 +20,7 @@
 #export DARSHAN_DISABLE_SHARED_REDUCTION=1
 #export DXT_ENABLE_IO_TRACE=4
 cleanup=yes
+rm -f timing.txt
 export HDF5_USE_FILE_LOCKING=FALSE
 
 cd $SCRATCH
@@ -30,22 +31,36 @@ lfs setstripe -c 12 -S 16m $WRKDIR
 cd $WRKDIR
 cmdw="a.out"
 cp $SLURM_SUBMIT_DIR/$cmdw .
-srun -n $tsk ./$cmdw -i
-ls -aolF mpitest.data
-rm -f mpitest.data
-srun -n $tsk ./$cmdw -c
-ls -aolF mpitest.data
-rm -f mpitest.data
 
 cmdw="ampi.out"
 cp $SLURM_SUBMIT_DIR/$cmdw .
-srun -n $tsk ./$cmdw -i
-ls -aolF mpitest.data
-rm -f mpitest.data
-srun -n $tsk ./$cmdw -c
-ls -aolF mpitest.data
-rm -f mpitest.data
+
+NPROCS="64 128 256 512 1024"
+for i in ${NPROCS}
+do
+  for j in {1..10}
+    do
+      tsk=$i
+      cmdw="a.out"
+      srun -n $tsk ./$cmdw -i
+      ls -aolF mpitest.data
+      rm -f mpitest.data
+      srun -n $tsk ./$cmdw -c
+      ls -aolF mpitest.data
+      rm -f mpitest.data
+
+      cmdw="ampi.out"
+      srun -n $tsk ./$cmdw -i
+      ls -aolF mpitest.data
+      rm -f mpitest.data
+      srun -n $tsk ./$cmdw -c
+      ls -aolF mpitest.data
+      rm -f mpitest.data
+  done
+done
+
 echo $PWD
+cp timing.txt $SLURM_SUBMIT_DIR/timing.txt_$SLURM_JOB_ID
 cd $SLURM_SUBMIT_DIR
 if [ -n "$cleanup" ]; then
   rm -r -f $WRKDIR
