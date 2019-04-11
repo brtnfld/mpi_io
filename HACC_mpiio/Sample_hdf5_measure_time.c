@@ -33,6 +33,8 @@
 
 #define RANK 1
 
+#define CHCK_VAL 0
+
 #define PRINTID printf("Proc %d: ", mpi_rank)
 
 
@@ -62,9 +64,9 @@ int main(int ac, char **av)
     // 1Gib = 1073741824
     // 9*1073741824 ( 9 GB total, 1GB per var.)
     
-    int64_t buf_size = 9663676416LL;
+    //int64_t buf_size = 9663676416LL;
     //int64_t buf_size = 48318382080LL; 
-    //int64_t buf_size = 36864LL;
+    int64_t buf_size = 36864LL;
 
     //For debugging uncomment the following line
     //int64_t  buf_size = 1024LL;
@@ -405,6 +407,7 @@ int main(int ac, char **av)
       size = st.st_size;
     }
 #endif
+
     MPI_Reduce(&total_time, &Max_total_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     MPI_Reduce(&total_time, &Sum_total_time, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&total_time, &Min_total_time, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
@@ -456,7 +459,7 @@ int main(int ac, char **av)
         /* Close dataset collectively */
         ret = H5Dclose(dset_id);
         ret = H5Sclose(file_space_id);
-        
+#if CHCK_VAL        
         for (i=0; i < mem_count[0]; i++){
           // printf("%f \n", (double)i+1.+(double)mpi_rank/1000.);
           dexpect_val = ((double)i+1.0+(double)mpi_rank/1000.0);
@@ -467,6 +470,7 @@ int main(int ac, char **av)
             nerrors++;
           }
         }
+#endif
         free(readdata);
       }
 
@@ -508,7 +512,7 @@ int main(int ac, char **av)
         ret = H5Dclose(dset_id);
         ret = H5Sclose(file_space_id);
         ret = H5Tclose(rtype);
-
+#if CHCK_VAL
         for (i=0; i < mem_count[0]; i++){
           // printf("%f \n", (double)i+1.+(double)mpi_rank/1000.);
           dexpect_val = ((double)i+1.0+(double)mpi_rank/1000.0);
@@ -519,7 +523,7 @@ int main(int ac, char **av)
             nerrors++;
           }
         }
-
+#endif
         free(readdata);
       }
 #endif
