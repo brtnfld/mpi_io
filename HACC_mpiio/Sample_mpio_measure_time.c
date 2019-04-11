@@ -224,7 +224,7 @@ int main(int ac, char **av)
       		printf(" Average Bandwidth is %f MB/s.\n",rate);
 
                 
-                fprintf(pFile, "%s w %d %f %f\n", av[1], mpi_size, rate, Max_total_time);
+                fprintf(pFile, "%d %f %f\n", mpi_size, rate, Max_total_time);
                 fclose(pFile);
         }	
   

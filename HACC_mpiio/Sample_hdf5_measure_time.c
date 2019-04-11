@@ -33,7 +33,7 @@
 
 #define RANK 1
 
-#define CHCK_VAL 1
+#define CHCK_VAL 0
 
 #define PRINTID printf("Proc %d: ", mpi_rank)
 
@@ -65,8 +65,8 @@ int main(int ac, char **av)
     // 9*1073741824 ( 9 GB total, 1GB per var.)
     
     //int64_t buf_size = 9663676416LL;
-    //int64_t buf_size = 48318382080LL; 
-    int64_t buf_size = 301989888LL;
+    int64_t buf_size = 48318382080LL; 
+    //int64_t buf_size = 301989888LL;
     //int64_t buf_size = 36864LL;
 
     //For debugging uncomment the following line
@@ -390,7 +390,6 @@ int main(int ac, char **av)
               } 
             }
 
-
             mpiio_etime = MPI_Wtime();
             total_time = mpiio_etime - mpiio_stime;
             
@@ -431,7 +430,7 @@ int main(int ac, char **av)
       printf("Average IO time for all processes is %f seconds.\n",Sum_total_time/mpi_size);
       printf(" Average Bandwidth is %f MB/s.\n",rate);
       
-      fprintf(pFile, " %s w %d %f %f\n", av[1], mpi_size, rate, Max_total_time); 
+      fprintf(pFile, "%d %f %f\n", mpi_size, rate, Max_total_time); 
     }
 
     hsize_t size_1;
@@ -446,12 +445,13 @@ int main(int ac, char **av)
     H5Pset_coll_metadata_write(fapl_id, 1);
     H5Pset_all_coll_metadata_ops(fapl_id, 1 );
 
-    mpiio_stime = MPI_Wtime();
 
     /* Read one variable at a time from the file */
     file_id = H5Fopen(filename, H5F_ACC_RDONLY, fapl_id);
     H5Pclose(fapl_id);
     
+    mpiio_stime = MPI_Wtime();
+
     if(strcmp(av[1],"-c")==0) {
       
       for (i=0; i < num_vars; i++) {
@@ -567,7 +567,7 @@ int main(int ac, char **av)
       printf("Average IO time for all processes is %f seconds.\n",Sum_total_time/mpi_size);
       printf(" Average Bandwidth is %f MB/s.\n",rate);
       
-      fprintf(pFile, "%s r %d %f %f\n", av[1], mpi_size, rate, Max_total_time);
+      fprintf(pFile, "%d %f %f\n",mpi_size, rate, Max_total_time);
       fclose(pFile);
     }	
     
