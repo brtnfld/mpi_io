@@ -33,7 +33,7 @@
 
 #define RANK 1
 
-#define CHCK_VAL 0
+#define CHCK_VAL 1
 
 #define PRINTID printf("Proc %d: ", mpi_rank)
 
@@ -66,7 +66,8 @@ int main(int ac, char **av)
     
     //int64_t buf_size = 9663676416LL;
     //int64_t buf_size = 48318382080LL; 
-    int64_t buf_size = 36864LL;
+    int64_t buf_size = 301989888LL;
+    //int64_t buf_size = 36864LL;
 
     //For debugging uncomment the following line
     //int64_t  buf_size = 1024LL;
@@ -91,7 +92,7 @@ int main(int ac, char **av)
 
     // HDF5
     hid_t file_id;              /* File ID */
-    hid_t fapl_id;		/* File access property list */
+    hid_t fapl_id, fcpl_id;		/* File access property list */
     hid_t dset_id;		/* Dataset ID */
     hid_t file_space_id;	/* File dataspace ID */
     hid_t mem_space_id;		/* Memory dataspace ID */
@@ -136,7 +137,6 @@ int main(int ac, char **av)
     struct stat st;
     off_t size;
 
-    
     MPI_Init(&ac, &av);
     MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
@@ -150,8 +150,8 @@ int main(int ac, char **av)
     buf_size_per_proc = buf_size/mpi_size;
 
     if (mpi_rank==0){
-	    printf("Testing simple C MPIO program with %d processes accessing file %s\n",mpi_size, filename);
-        pFile = fopen("timing.txt", "a");
+      printf("Testing simple C HDF5 program with %d processes accessing file %s\n",mpi_size, filename);
+      pFile = fopen("timing.txt", "a");
     }
 
 
@@ -185,8 +185,14 @@ int main(int ac, char **av)
       
         file_dims[0] = buf_size/num_vars/sizeof(double);
 
+
+        fcpl_id = H5Pcreate(H5P_FILE_CREATE);
+        //        H5Pset_file_space_strategy(fcpl_id, H5F_FSPACE_STRATEGY_FSM_AGGR, 1, (hsize_t)1);
+
         /* Create the file */
-        file_id = H5Fcreate(filename, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+        file_id = H5Fcreate(filename, H5F_ACC_TRUNC, fcpl_id, H5P_DEFAULT);
+
+        H5Pclose(fcpl_id);
         
         if(strcmp(av[1],"-c")==0) {
           for (i=0; i < num_vars; i++) {
@@ -223,6 +229,10 @@ int main(int ac, char **av)
       ret = H5Pset_fapl_mpio(fapl_id, MPI_COMM_WORLD, MPI_INFO_NULL);
 
       /* Create the file collectively */
+
+      H5Pset_coll_metadata_write(fapl_id, 1);
+      H5Pset_all_coll_metadata_ops(fapl_id, 1 );
+
       file_id = H5Fopen(filename, H5F_ACC_RDWR, fapl_id);
       
       /* Release file access property list */
@@ -401,12 +411,12 @@ int main(int ac, char **av)
     } else {
           MPI_File_close(&fh);
     }
-    #if 0
+
     if(mpi_rank == 0) {
       stat(filename, &st);
       size = st.st_size;
     }
-#endif
+
 
     MPI_Reduce(&total_time, &Max_total_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     MPI_Reduce(&total_time, &Sum_total_time, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
@@ -426,10 +436,21 @@ int main(int ac, char **av)
 
     hsize_t size_1;
 
+    fapl_id = H5Pcreate (H5P_FILE_ACCESS);
+
+    /* Set file access property list to use the MPI-IO file driver */
+    ret = H5Pset_fapl_mpio(fapl_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+
+    /* Create the file collectively */
+
+    H5Pset_coll_metadata_write(fapl_id, 1);
+    H5Pset_all_coll_metadata_ops(fapl_id, 1 );
+
     mpiio_stime = MPI_Wtime();
 
     /* Read one variable at a time from the file */
-    file_id = H5Fopen(filename, H5F_ACC_RDONLY, H5P_DEFAULT);
+    file_id = H5Fopen(filename, H5F_ACC_RDONLY, fapl_id);
+    H5Pclose(fapl_id);
     
     if(strcmp(av[1],"-c")==0) {
       
@@ -478,8 +499,6 @@ int main(int ac, char **av)
       
     } else if(strcmp(av[1],"-i")==0) {
 
-#if 0
-      
       for (i=0; i < num_vars; i++) {
         file_dims[0] = mem_dims[0]*mpi_size;
         file_space_id = H5Screate_simple(1, file_dims, NULL);
@@ -526,7 +545,6 @@ int main(int ac, char **av)
 #endif
         free(readdata);
       }
-#endif
       ret = H5Fclose(file_id);
       
     }
