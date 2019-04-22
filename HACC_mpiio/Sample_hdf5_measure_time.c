@@ -37,7 +37,6 @@
 
 #define PRINTID printf("Proc %d: ", mpi_rank)
 
-
 bool dequal(double a, double b, double epsilon)
 {
  return fabs(a-b) < epsilon;

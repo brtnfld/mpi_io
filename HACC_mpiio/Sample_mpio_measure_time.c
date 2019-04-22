@@ -21,12 +21,20 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <sys/stat.h>
 #include <mpi.h>
+#include <math.h>
+#include <stdbool.h>
 #ifndef MPI_FILE_NULL           /*MPIO may be defined in mpi.h already       */
 #   include <mpio.h>
 #endif
 
 #define PRINTID printf("Proc %d: ", mpi_rank)
+
+bool dequal(double a, double b, double epsilon)
+{
+ return fabs(a-b) < epsilon;
+}
 
 int main(int ac, char **av)
 {
@@ -36,23 +44,25 @@ int main(int ac, char **av)
     char mpi_err_str[MPI_MAX_ERROR_STRING];
     int  mpi_err_strlen;
     int  mpi_err;
-    char expect_val;
-    int  i=0 ; 
+    double expect_val;
+    int  i=0, j=0 ; 
     int  nerrors = 0;		/* number of errors */
     /* buffer size is the total size for one variable. */
     /* The buffer size will be 50 GB */
     //int64_t  buf_size = 53687091200LL;
     // The buffer size will be 5 GB(5*1024*1024*1024).
-    int64_t  buf_size = 5368709120LL;
+    //int64_t  buf_size = 5368709120LL;
     //For debugging uncomment the following line
-    //int64_t  buf_size = 1024LL;
+    int64_t  buf_size = 1024LL;
+    double dexpect_val;
     
     /* Number of variables, currently is 9 like Generic IO. */
     int num_vars  = 9;
     int rest_num =0;
     MPI_Offset  mpi_off = 0;
     MPI_Status  mpi_stat;
-    char* writedata = NULL;
+    double* writedata = NULL;
+    double* readdata = NULL;
 
     int64_t buf_size_per_proc = 0;
     double mpiio_stime =0;
@@ -63,7 +73,6 @@ int main(int ac, char **av)
     double Sum_total_time = 0;
     double rate = 0;
     FILE *pFile;
-
 
     MPI_Init(&ac, &av);
     MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
@@ -92,7 +101,18 @@ int main(int ac, char **av)
     }
 
     // Allocate total amount of data per process to the buffer
-    writedata = malloc(buf_size*num_vars/mpi_size);
+    writedata = malloc(buf_size*num_vars/mpi_size*sizeof(double));
+    
+    i = 0;
+    for (j=0; j < buf_size_per_proc*num_vars; j++){
+      if( j % (buf_size_per_proc) == 0) {
+        i = 0.;
+      } else {
+        i=i+1;
+      }
+      writedata[j] = (double)(mpi_rank*buf_size_per_proc + i);
+      //  printf(" WRITE data[%d:%d] %lf\n", mpi_rank, j, writedata[j]);
+    }
 
     /* each process writes some data */
     if(ac >1) {
@@ -100,10 +120,10 @@ int main(int ac, char **av)
         if(strcmp(av[1],"-c")==0) {
             if(mpi_rank == 0) 
                 printf("coming to contiguous pattern\n"); 
-            mpi_off = buf_size_per_proc*mpi_rank;
+            mpi_off = buf_size_per_proc*mpi_rank*sizeof(double);
             mpiio_stime = MPI_Wtime(); 
             for (i=0; i < num_vars; i++) {
-                if ((mpi_err = MPI_File_write_at(fh, mpi_off, writedata, buf_size_per_proc, MPI_BYTE,
+                if ((mpi_err = MPI_File_write_at(fh, mpi_off, writedata, buf_size_per_proc*sizeof(double), MPI_BYTE,
   	                &mpi_stat))
   	                != MPI_SUCCESS){
   	                 MPI_Error_string(mpi_err, mpi_err_str, &mpi_err_strlen);
@@ -112,7 +132,7 @@ int main(int ac, char **av)
   		             (long) mpi_off, (int) buf_size_per_proc, mpi_err_str);
   	                 MPI_Abort(MPI_COMM_WORLD, 1);
                 }
-                mpi_off+=buf_size;
+                mpi_off+=buf_size_per_proc*sizeof(double);
       
            }
            mpiio_etime = MPI_Wtime();
@@ -123,10 +143,10 @@ int main(int ac, char **av)
                 printf("Coming to the interleaved pattern.\n");
 
             // Each process has a contiuous write.
-            mpi_off = mpi_rank*buf_size_per_proc*num_vars; 
+            mpi_off = buf_size_per_proc*mpi_rank*num_vars*sizeof(double); 
             mpiio_stime = MPI_Wtime();
             for (i=0; i < num_vars; i++) {
-                if ((mpi_err = MPI_File_write_at(fh, mpi_off, writedata, buf_size_per_proc, MPI_BYTE,
+                if ((mpi_err = MPI_File_write_at(fh, mpi_off, writedata, buf_size_per_proc*sizeof(double), MPI_BYTE,
                     &mpi_stat))
                     != MPI_SUCCESS){
                     MPI_Error_string(mpi_err, mpi_err_str, &mpi_err_strlen);
@@ -135,15 +155,15 @@ int main(int ac, char **av)
                             (long) mpi_off, (int) buf_size_per_proc, mpi_err_str);
                     MPI_Abort(MPI_COMM_WORLD, 1);
                 }
-                mpi_off+=buf_size_per_proc;
+                mpi_off+=buf_size_per_proc*sizeof(double);
             }
             mpiio_etime = MPI_Wtime();
             total_time = mpiio_etime - mpiio_stime;
         }
     
         else if(strcmp(av[1],"-t")==0) {
-            buf_size_per_proc = buf_size*num_vars/mpi_size;
-            mpi_off = mpi_rank *buf_size_per_proc;
+            buf_size_per_proc = buf_size*num_vars/mpi_size*sizeof(double);
+            mpi_off = mpi_rank *buf_size_per_proc*sizeof(double);
             if(mpi_rank == 0) 
                 printf("Coming to one MPI-IO write with the atomic datatype.\n");
 
@@ -230,10 +250,128 @@ int main(int ac, char **av)
   
     }
   
-  	free(writedata);
+    free(writedata);
 
-  	MPI_File_close(&fh);
-  	MPI_Finalize();
+    MPI_File_close(&fh);
+
+
+/*     FILE *ptr; */
+/*     ptr = fopen(filename,"rb"); */
+/*     double buffer[10]; */
+
+/*     fread(buffer,sizeof(buffer),1,ptr); // read 10 bytes to our buffer */
+
+/*     for(i = 0; i<10; i++) */
+/*       printf("%lf ", buffer[i]); // prints a series of bytes */
+
+/*     abort(); */
+
+    
+    if ((mpi_err = MPI_File_open(MPI_COMM_WORLD, filename,
+                                 MPI_MODE_RDONLY,
+                                 MPI_INFO_NULL, &fh))
+        != MPI_SUCCESS){
+      MPI_Error_string(mpi_err, mpi_err_str, &mpi_err_strlen);
+      PRINTID;
+      printf("MPI_File_open failed (%s)\n", mpi_err_str);
+      MPI_Abort(MPI_COMM_WORLD, 1);
+    }
+    
+    // Allocate total amount of data per process to the buffer
+    readdata = malloc(buf_size*num_vars/mpi_size*sizeof(double));
+
+
+    if(ac >1) {
+      
+      if(strcmp(av[1],"-c")==0) {
+        if(mpi_rank == 0) 
+          printf("coming to contiguous pattern\n"); 
+        mpi_off = buf_size_per_proc*mpi_rank*sizeof(double);
+        mpiio_stime = MPI_Wtime(); 
+        for (i=0; i < num_vars; i++) {
+          if ((mpi_err = MPI_File_read_at(fh, mpi_off, readdata, buf_size_per_proc*sizeof(double), MPI_BYTE,
+                                           &mpi_stat))
+              != MPI_SUCCESS){
+            MPI_Error_string(mpi_err, mpi_err_str, &mpi_err_strlen);
+            PRINTID;
+            printf("MPI_File_read_at offset(%ld), bytes (%d), failed (%s)\n",
+                   (long) mpi_off, (int) buf_size_per_proc, mpi_err_str);
+            MPI_Abort(MPI_COMM_WORLD, 1);
+          }
+          mpi_off+=buf_size_per_proc*sizeof(double);
+
+          for (j=0; j < buf_size_per_proc; j++){
+
+            printf("read data[%d:%d] got %lf \n", mpi_rank, j,
+                    readdata[j]);
+#if 0
+	    dexpect_val = (double)(mpi_rank*buf_size/mpi_size + j);
+
+            if(!dequal(readdata[j], dexpect_val, 1.0e-6)) {
+              PRINTID;
+              printf("read data[%d:%d] got %f, expect %f\n", mpi_rank, j,
+                     readdata[j], dexpect_val);
+              nerrors++;
+            }
+
+            //#if 0
+            printf("read data[%d:%d] got %lf, expect %lf\n", mpi_rank, j,
+                   readdata[j], expect_val);
+	    if (readdata[j] != expect_val){
+		PRINTID;
+		printf("read data[%d:%d] got %d, expect %d\n", mpi_rank, j,
+			readdata[j], expect_val);
+		nerrors++;
+	    }
+#endif
+	}
+          
+        }
+        mpiio_etime = MPI_Wtime();
+        total_time = mpiio_etime - mpiio_stime;
+      }
+      else if(strcmp(av[1],"-i")==0) {
+        if(mpi_rank == 0) 
+          printf("Coming to the read interleaved pattern.\n");
+        
+        // Each process has a contiuous write.
+        mpi_off = buf_size_per_proc*mpi_rank*num_vars*sizeof(double); 
+        mpiio_stime = MPI_Wtime();
+        for (i=0; i < num_vars; i++) {
+          if ((mpi_err = MPI_File_read_at(fh, mpi_off, writedata, buf_size_per_proc*sizeof(double), MPI_BYTE,
+                                           &mpi_stat))
+                    != MPI_SUCCESS){
+            MPI_Error_string(mpi_err, mpi_err_str, &mpi_err_strlen);
+            PRINTID;
+            printf("MPI_File_read_at offset(%ld), bytes (%d), failed (%s)\n",
+                   (long) mpi_off, (int) buf_size_per_proc, mpi_err_str);
+            MPI_Abort(MPI_COMM_WORLD, 1);
+          }
+          mpi_off+=buf_size_per_proc*sizeof(double);
+
+          for (j=0; j < buf_size_per_proc; j++){
+
+	    dexpect_val = (double)(mpi_rank*buf_size/mpi_size + j);
+
+            if(!dequal(readdata[j], dexpect_val, 1.0e-6)) {
+              PRINTID;
+              printf("read data[%d:%d] got %f, expect %f\n", mpi_rank, j,
+                     readdata[j], dexpect_val);
+              nerrors++;
+            }
+          }
+        }
+        mpiio_etime = MPI_Wtime();
+        total_time = mpiio_etime - mpiio_stime;
+      }
+    }
+
+    free(readdata);
+    
+    MPI_File_close(&fh);
+    
+    
+    MPI_Finalize();
 #if 0
     /* each process reads all data and verify. */
     for (irank=0; irank < mpi_size; irank++){
@@ -247,7 +385,18 @@ int main(int ac, char **av)
 		    (long) mpi_off, (int) DIMSIZE, mpi_err_str);
 	    MPI_Abort(MPI_COMM_WORLD, 1);
 	};
+
+        i = 0;
+        for (j=0; j < buf_size*num_vars/mpi_size; j++){
+          writedata[j] = mpi_rank*buf_size/mpi_size + i;
+          if(i%(buf_size/mpi_size-1) == 0)
+            i = 0;
+          else
+            i=+1;
+        }
+
 	for (i=0; i < DIMSIZE; i++){
+          
 	    expect_val = irank*DIMSIZE + i;
 	    if (readdata[i] != expect_val){
 		PRINTID;
