@@ -8,7 +8,7 @@
 
 #define H5FILE_NAME     "2GB.h5"
 #define DATASETNAME 	"IntArray" 
-#define NX     134217729  /* dataset dimensions */
+#define NX     134217727  /* dataset dimensions */
 #define NY     4 
 #define RANK   2
 
@@ -44,9 +44,9 @@ main (int argc, char **argv)
     MPI_Comm_size(comm, &mpi_size);
     MPI_Comm_rank(comm, &mpi_rank);
 
-    if(mpi_rank == 0) 
+    if(mpi_rank == mpi_size-1) 
       color=0;
-    MPI_Comm_split(comm, color, 0, &newcomm );
+    MPI_Comm_split(comm, color, 1, &newcomm );
 
     dimsf[0] = NX;
     dimsf[1] = NY;

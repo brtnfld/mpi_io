@@ -111,7 +111,7 @@ int main(int ac, char **av)
         i=i+1;
       }
       writedata[j] = (double)(mpi_rank*buf_size_per_proc + i);
-      //  printf(" WRITE data[%d:%d] %lf\n", mpi_rank, j, writedata[j]);
+      //   printf(" WRITE data[%d:%d] %lf\n", mpi_rank, j, writedata[j]);
     }
 
     /* each process writes some data */
@@ -132,8 +132,8 @@ int main(int ac, char **av)
   		             (long) mpi_off, (int) buf_size_per_proc, mpi_err_str);
   	                 MPI_Abort(MPI_COMM_WORLD, 1);
                 }
-                mpi_off+=buf_size_per_proc*sizeof(double);
-      
+                //   printf(" offest %d %ld \n", mpi_rank, mpi_off);
+                mpi_off+=buf_size*sizeof(double);
            }
            mpiio_etime = MPI_Wtime();
            total_time = mpiio_etime - mpiio_stime;
@@ -254,18 +254,21 @@ int main(int ac, char **av)
 
     MPI_File_close(&fh);
 
+#if 0
+    if(mpi_rank == 0) {
+    FILE *ptr;
+    ptr = fopen(filename,"rb");
+    double buffer[32];
 
-/*     FILE *ptr; */
-/*     ptr = fopen(filename,"rb"); */
-/*     double buffer[10]; */
+    fread(buffer,sizeof(buffer),1,ptr); // read 10 bytes to our buffer
 
-/*     fread(buffer,sizeof(buffer),1,ptr); // read 10 bytes to our buffer */
+    for(i = 0; i<32; i++)
+      printf("%lf \n", buffer[i]); // prints a series of bytes
 
-/*     for(i = 0; i<10; i++) */
-/*       printf("%lf ", buffer[i]); // prints a series of bytes */
-
-/*     abort(); */
-
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+    abort();
+#endif
     
     if ((mpi_err = MPI_File_open(MPI_COMM_WORLD, filename,
                                  MPI_MODE_RDONLY,
@@ -298,13 +301,10 @@ int main(int ac, char **av)
                    (long) mpi_off, (int) buf_size_per_proc, mpi_err_str);
             MPI_Abort(MPI_COMM_WORLD, 1);
           }
-          mpi_off+=buf_size_per_proc*sizeof(double);
+          mpi_off+=buf_size*sizeof(double);
 
           for (j=0; j < buf_size_per_proc; j++){
 
-            printf("read data[%d:%d] got %lf \n", mpi_rank, j,
-                    readdata[j]);
-#if 0
 	    dexpect_val = (double)(mpi_rank*buf_size/mpi_size + j);
 
             if(!dequal(readdata[j], dexpect_val, 1.0e-6)) {
@@ -313,17 +313,6 @@ int main(int ac, char **av)
                      readdata[j], dexpect_val);
               nerrors++;
             }
-
-            //#if 0
-            printf("read data[%d:%d] got %lf, expect %lf\n", mpi_rank, j,
-                   readdata[j], expect_val);
-	    if (readdata[j] != expect_val){
-		PRINTID;
-		printf("read data[%d:%d] got %d, expect %d\n", mpi_rank, j,
-			readdata[j], expect_val);
-		nerrors++;
-	    }
-#endif
 	}
           
         }
@@ -332,13 +321,13 @@ int main(int ac, char **av)
       }
       else if(strcmp(av[1],"-i")==0) {
         if(mpi_rank == 0) 
-          printf("Coming to the read interleaved pattern.\n");
+          printf("Coming to the READ interleaved pattern.\n");
         
         // Each process has a contiuous write.
         mpi_off = buf_size_per_proc*mpi_rank*num_vars*sizeof(double); 
         mpiio_stime = MPI_Wtime();
         for (i=0; i < num_vars; i++) {
-          if ((mpi_err = MPI_File_read_at(fh, mpi_off, writedata, buf_size_per_proc*sizeof(double), MPI_BYTE,
+          if ((mpi_err = MPI_File_read_at(fh, mpi_off, readdata, buf_size_per_proc*sizeof(double), MPI_BYTE,
                                            &mpi_stat))
                     != MPI_SUCCESS){
             MPI_Error_string(mpi_err, mpi_err_str, &mpi_err_strlen);
