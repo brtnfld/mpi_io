@@ -234,18 +234,16 @@ int main(int ac, char **av)
     	MPI_Reduce(&total_time, &Sum_total_time, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     	MPI_Reduce(&total_time, &Min_total_time, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
     	if(mpi_rank == 0) {
-      		rate = (double)(buf_size*num_vars)/Max_total_time/(1024.*1024.);
-      		printf("%d Procs Wrote %d variables in %f seconds. \n",mpi_size,num_vars,Max_total_time);
-      		printf(" Bandwidth is %f MB/s.\n",rate);
-      		printf("Total IO time for all processes is %f seconds.\n",Sum_total_time);
-      		printf("Minimum IO time for all processes is %f seconds.\n",Min_total_time);
-      		rate = (double)(buf_size*num_vars)/(Sum_total_time/mpi_size)/(1024.*1024.);
-      		printf("Average IO time for all processes is %f seconds.\n",Sum_total_time/mpi_size);
-      		printf(" Average Bandwidth is %f MB/s.\n",rate);
-
-                
-                fprintf(pFile, "%d %f %f\n", mpi_size, rate, Max_total_time);
-                fclose(pFile);
+          rate = (double)(buf_size*sizeof(double)*num_vars)/Max_total_time/(1024.*1024.);
+          printf("%d Procs WROTE %d variables in %f seconds. \n",mpi_size,num_vars,Max_total_time);
+          printf(" WRITE Bandwidth is %f MB/s.\n",rate);
+          printf("Total WRITE time for all processes is %f seconds.\n",Sum_total_time);
+          printf("Minimum WRITE time for all processes is %f seconds.\n",Min_total_time);
+          //  rate = (double)(buf_size*sizeof(double)*num_vars)/(Sum_total_time/mpi_size)/(1024.*1024.);
+          //  printf("Average WRITE time for all processes is %f seconds.\n",Sum_total_time/mpi_size);
+          //   printf(" Average WRITE Bandwidth is %f MB/s.\n",rate);
+          
+          fprintf(pFile, "%d %f", mpi_size, rate);
         }	
   
     }
@@ -353,6 +351,26 @@ int main(int ac, char **av)
         mpiio_etime = MPI_Wtime();
         total_time = mpiio_etime - mpiio_stime;
       }
+
+      MPI_Reduce(&total_time, &Max_total_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+      MPI_Reduce(&total_time, &Sum_total_time, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+      MPI_Reduce(&total_time, &Min_total_time, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+      if(mpi_rank == 0) {
+        rate = (double)(buf_size*sizeof(double)*num_vars)/Max_total_time/(1024.*1024.);
+        printf("%d Procs READ %d variables in %f seconds. \n",mpi_size,num_vars,Max_total_time);
+        printf(" READ Bandwidth is %f MB/s.\n",rate);
+        printf("Total READ time for all processes is %f seconds.\n",Sum_total_time);
+        printf("Minimum READ time for all processes is %f seconds.\n",Min_total_time);
+        //  rate = (double)(buf_size*sizeof(double)*num_vars)/(Sum_total_time/mpi_size)/(1024.*1024.);
+        //  printf("Average READ time for all processes is %f seconds.\n",Sum_total_time/mpi_size);
+        //  printf(" Average READ Bandwidth is %f MB/s.\n",rate);
+        
+        
+        fprintf(pFile, " %f \n", rate);
+        fclose(pFile);
+      }	
+
+
     }
 
     free(readdata);
@@ -400,6 +418,5 @@ int main(int ac, char **av)
     MPI_File_close(&fh);
 #endif
 
-
-  	return 0;
+    return 0;
 }
