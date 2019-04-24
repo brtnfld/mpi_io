@@ -33,7 +33,7 @@
 
 #define RANK 1
 
-#define CHCK_VAL 0
+#define CHCK_VAL 1
 
 #define PRINTID printf("Proc %d: ", mpi_rank)
 
@@ -51,7 +51,6 @@ int main(int ac, char **av)
     char mpi_err_str[MPI_MAX_ERROR_STRING];
     int  mpi_err_strlen;
     int  mpi_err;
-    char expect_val;
     double dexpect_val;
     int  i=0 ; 
     int  nerrors = 0;		/* number of errors */
@@ -64,12 +63,10 @@ int main(int ac, char **av)
     // 9*1073741824 ( 9 GB total, 1GB per var.)
     
     //int64_t buf_size = 9663676416LL;
-    int64_t buf_size = 48318382080LL; 
-    //int64_t buf_size = 301989888LL;
-    //int64_t buf_size = 36864LL;
+    //int64_t buf_size = 1073741824LL;
 
     //For debugging uncomment the following line
-    //int64_t  buf_size = 1024LL;
+    int64_t  buf_size = 1024LL;
     
     /* Number of variables, currently is 9 like Generic IO. */
     int num_vars  = 9;
@@ -182,7 +179,7 @@ int main(int ac, char **av)
 
       if( mpi_rank == 0) {
       
-        file_dims[0] = buf_size/num_vars/sizeof(double);
+        file_dims[0] = buf_size; ///num_vars/sizeof(double);
 
 
         fcpl_id = H5Pcreate(H5P_FILE_CREATE);
@@ -254,13 +251,13 @@ int main(int ac, char **av)
 
     // Allocate total amount of data per process to the buffer
     if(hdf5) {
-      mem_dims[0] = buf_size/num_vars/mpi_size/sizeof(double);
+      mem_dims[0] = buf_size_per_proc; // /num_vars/mpi_size/sizeof(double);
 
       if(strcmp(av[1],"-i")==0) {
 
         Hdata = (hacc_t *) malloc ( mem_dims[0] * sizeof (hacc_t));
         for (ii=0; ii < mem_dims[0]; ii++) {
-          Hdata[ii].id = (double)(ii+1+(double)mpi_rank/1000.);
+          Hdata[ii].id = (double)(mpi_rank*buf_size_per_proc + ii);
           Hdata[ii].mask =  Hdata[ii].id;
           Hdata[ii].x =  Hdata[ii].id;
           Hdata[ii].y =  Hdata[ii].id;
@@ -276,7 +273,7 @@ int main(int ac, char **av)
 
         writedata2 = malloc( mem_dims[0]*sizeof(hacc_t));
         for (ii=0; ii < mem_dims[0]; ii++) {
-          writedata2[ii] = (double)(ii+1+(double)mpi_rank/1000.);
+          writedata2[ii] = (double)(mpi_rank*buf_size_per_proc + ii);
         }
 
       }
@@ -285,7 +282,7 @@ int main(int ac, char **av)
 
 
     } else {
-      writedata = malloc(buf_size*num_vars/mpi_size);
+      writedata = malloc(buf_size_per_proc*num_vars);
     }
     /* each process writes some data */
 
@@ -444,7 +441,6 @@ int main(int ac, char **av)
     H5Pset_coll_metadata_write(fapl_id, 1);
     H5Pset_all_coll_metadata_ops(fapl_id, 1 );
 
-
     /* Read one variable at a time from the file */
     file_id = H5Fopen(filename, H5F_ACC_RDONLY, fapl_id);
     H5Pclose(fapl_id);
@@ -470,7 +466,7 @@ int main(int ac, char **av)
         mem_count[0] = mem_dims[0];
         ret = H5Sselect_hyperslab(mem_space_id, H5S_SELECT_SET, mem_start, NULL, mem_count, NULL);
         
-        readdata = malloc(buf_size*num_vars/mpi_size);
+        readdata = malloc(buf_size_per_proc*num_vars);
         
         /* Read data independently */
         ret = H5Dread(dset_id, H5T_NATIVE_DOUBLE, mem_space_id, file_space_id, H5P_DEFAULT, readdata);
@@ -479,14 +475,13 @@ int main(int ac, char **av)
         /* Close dataset collectively */
         ret = H5Dclose(dset_id);
         ret = H5Sclose(file_space_id);
-#if CHCK_VAL        
+#if CHCK_VAL
         for (i=0; i < mem_count[0]; i++){
-          // printf("%f \n", (double)i+1.+(double)mpi_rank/1000.);
-          dexpect_val = ((double)i+1.0+(double)mpi_rank/1000.0);
+          dexpect_val = (double)(mpi_rank*mem_count[0] + i);
           if(!dequal(readdata[i], dexpect_val, 1.0e-6)) {
             PRINTID;
-            printf("read data[%d:%d] got %f, expect %f\n", mpi_rank, i,
-                   readdata[i], expect_val);
+            printf("read data[%d:%d] got %lf, expect %lf\n", mpi_rank, i,
+                   readdata[i], dexpect_val);
             nerrors++;
           }
         }
@@ -520,7 +515,7 @@ int main(int ac, char **av)
         ret = H5Sselect_hyperslab(mem_space_id, H5S_SELECT_SET, mem_start, NULL, mem_count, NULL);
       
       
-        readdata = malloc(buf_size*num_vars/mpi_size);
+        readdata = malloc(buf_size_per_proc*num_vars);
       
         /* Read data independently */
         ret = H5Dread(dset_id, rtype, mem_space_id, file_space_id, H5P_DEFAULT, readdata);
@@ -533,11 +528,11 @@ int main(int ac, char **av)
 #if CHCK_VAL
         for (i=0; i < mem_count[0]; i++){
           // printf("%f \n", (double)i+1.+(double)mpi_rank/1000.);
-          dexpect_val = ((double)i+1.0+(double)mpi_rank/1000.0);
+          dexpect_val = (double)(mpi_rank*buf_size/mpi_size + i);
           if(!dequal(readdata[i], dexpect_val, 1.0e-6)) {
             PRINTID;
             printf("read data[%d:%d] got %f, expect %f\n", mpi_rank, i,
-                   readdata[i], expect_val);
+                   readdata[i], dexpect_val);
             nerrors++;
           }
         }
@@ -584,11 +579,11 @@ int main(int ac, char **av)
 	    MPI_Abort(MPI_COMM_WORLD, 1);
 	};
 	for (i=0; i < DIMSIZE; i++){
-	    expect_val = irank*DIMSIZE + i;
-	    if (readdata[i] != expect_val){
+	    dexpect_val = irank*DIMSIZE + i;
+	    if (readdata[i] != dexpect_val){
 		PRINTID;
 		printf("read data[%d:%d] got %d, expect %d\n", irank, i,
-			readdata[i], expect_val);
+			readdata[i], dexpect_val);
 		nerrors++;
 	    }
 	}

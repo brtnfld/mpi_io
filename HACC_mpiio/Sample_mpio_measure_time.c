@@ -48,12 +48,11 @@ int main(int ac, char **av)
     int  i=0, j=0 ; 
     int  nerrors = 0;		/* number of errors */
     /* buffer size is the total size for one variable. */
-    /* The buffer size will be 50 GB */
-    int64_t  buf_size = 68719476736LL;
-    // The buffer size will be 5 GB(5*1024*1024*1024).
+    /* The buffer size will be 8 GB, 72 GB total (9* 1073741824*8/(1024*1024*1024)). */
+    //int64_t  buf_size = 1073741824LL;
     //int64_t  buf_size = 5368709120LL;
     //For debugging uncomment the following line
-    //int64_t  buf_size = 1024LL;
+    int64_t  buf_size = 1024LL;
     double dexpect_val;
     
     /* Number of variables, currently is 9 like Generic IO. */
@@ -405,10 +404,10 @@ int main(int ac, char **av)
 	for (i=0; i < DIMSIZE; i++){
           
 	    expect_val = irank*DIMSIZE + i;
-	    if (readdata[i] != expect_val){
+	    if (readdata[i] != dexpect_val){
 		PRINTID;
 		printf("read data[%d:%d] got %d, expect %d\n", irank, i,
-			readdata[i], expect_val);
+			readdata[i], dexpect_val);
 		nerrors++;
 	    }
 	}
