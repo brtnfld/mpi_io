@@ -33,7 +33,7 @@
 
 #define RANK 1
 
-#define CHCK_VAL 1
+#define CHCK_VAL 0
 
 #define PRINTID printf("Proc %d: ", mpi_rank)
 
