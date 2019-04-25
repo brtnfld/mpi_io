@@ -31,6 +31,8 @@
 
 #define PRINTID printf("Proc %d: ", mpi_rank)
 
+#define CHCK_VAL 0
+
 bool dequal(double a, double b, double epsilon)
 {
  return fabs(a-b) < epsilon;
@@ -49,10 +51,9 @@ int main(int ac, char **av)
     int  nerrors = 0;		/* number of errors */
     /* buffer size is the total size for one variable. */
     /* The buffer size will be 8 GB, 72 GB total (9* 1073741824*8/(1024*1024*1024)). */
-    //int64_t  buf_size = 1073741824LL;
-    //int64_t  buf_size = 5368709120LL;
+    int64_t  buf_size = 1073741824LL;
     //For debugging uncomment the following line
-    int64_t  buf_size = 1024LL;
+    //int64_t  buf_size = 1024LL;
     double dexpect_val;
     
     /* Number of variables, currently is 9 like Generic IO. */
@@ -242,7 +243,7 @@ int main(int ac, char **av)
           //  printf("Average WRITE time for all processes is %f seconds.\n",Sum_total_time/mpi_size);
           //   printf(" Average WRITE Bandwidth is %f MB/s.\n",rate);
           
-          fprintf(pFile, "%d %f", mpi_size, rate);
+          fprintf(pFile, "%s %d %f", av[1], mpi_size, rate);
         }	
   
     }
@@ -284,7 +285,7 @@ int main(int ac, char **av)
     if(ac >1) {
       
       if(strcmp(av[1],"-c")==0) {
-        if(mpi_rank == 0) 
+        if(mpi_rank == 0)
           printf("coming to contiguous pattern\n"); 
         mpi_off = buf_size_per_proc*mpi_rank*sizeof(double);
         mpiio_stime = MPI_Wtime(); 
@@ -299,19 +300,19 @@ int main(int ac, char **av)
             MPI_Abort(MPI_COMM_WORLD, 1);
           }
           mpi_off+=buf_size*sizeof(double);
-
+#if CHCK_VAL
           for (j=0; j < buf_size_per_proc; j++){
 
 	    dexpect_val = (double)(mpi_rank*buf_size/mpi_size + j);
-
+            
             if(!dequal(readdata[j], dexpect_val, 1.0e-6)) {
               PRINTID;
               printf("read data[%d:%d] got %f, expect %f\n", mpi_rank, j,
                      readdata[j], dexpect_val);
               nerrors++;
             }
-	}
-          
+          }
+#endif    
         }
         mpiio_etime = MPI_Wtime();
         total_time = mpiio_etime - mpiio_stime;
@@ -334,7 +335,7 @@ int main(int ac, char **av)
             MPI_Abort(MPI_COMM_WORLD, 1);
           }
           mpi_off+=buf_size_per_proc*sizeof(double);
-
+#if CHCK_VAL
           for (j=0; j < buf_size_per_proc; j++){
 
 	    dexpect_val = (double)(mpi_rank*buf_size/mpi_size + j);
@@ -346,6 +347,7 @@ int main(int ac, char **av)
               nerrors++;
             }
           }
+#endif
         }
         mpiio_etime = MPI_Wtime();
         total_time = mpiio_etime - mpiio_stime;
@@ -363,8 +365,6 @@ int main(int ac, char **av)
         //  rate = (double)(buf_size*sizeof(double)*num_vars)/(Sum_total_time/mpi_size)/(1024.*1024.);
         //  printf("Average READ time for all processes is %f seconds.\n",Sum_total_time/mpi_size);
         //  printf(" Average READ Bandwidth is %f MB/s.\n",rate);
-        
-        
         fprintf(pFile, " %f \n", rate);
         fclose(pFile);
       }	
