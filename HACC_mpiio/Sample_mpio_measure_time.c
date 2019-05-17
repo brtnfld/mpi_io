@@ -49,16 +49,21 @@ int main(int ac, char **av)
     double expect_val;
     int  i=0, j=0 ; 
     int  nerrors = 0;		/* number of errors */
+    long int gb;
     /* buffer size is the total size for one variable. */
     /* The buffer size will be 8 GB, 72 GB total (9* 1073741824*8/(1024*1024*1024)). */
-    /*int64_t buf_size = 1073741824LL;*/
+
+    // (multiples of 32)
+    //int64_t buf_size = 1073741824LL;
+    // Summit (multiples of 42)
     int64_t buf_size = 1213857792LL;
     //For debugging uncomment the following line
     //int64_t  buf_size = 1024LL;
     double dexpect_val;
     
     /* Number of variables, currently is 9 like Generic IO. */
-    int num_vars  = 9;
+    // 12
+    int num_vars  = 12;
     int rest_num =0;
     MPI_Offset  mpi_off = 0;
     MPI_Status  mpi_stat;
@@ -72,7 +77,7 @@ int main(int ac, char **av)
     double Max_total_time = 0;
     double Min_total_time = 0;
     double Sum_total_time = 0;
-    double rate = 0;
+    double rate_avg=0., rate_min=0., rate_max=0.;
     FILE *pFile;
 
     MPI_Init(&ac, &av);
@@ -83,22 +88,21 @@ int main(int ac, char **av)
     buf_size_per_proc = buf_size/mpi_size;
 
     if (mpi_rank==0){
-	    printf("Testing simple C MPIO program with %d processes accessing file %s\n",
-	    mpi_size, filename);
-        printf(" This tests the MPIO different patterns for 9 variables with MPIO write.\n");
-        printf("There are four patterns. -c 9 contiguous writes -i 9 interleaved writes -p 3 writes -t 1 write.\n");
-        pFile = fopen("timing.txt", "a");
+      printf("Testing simple C MPIO program with %d processes accessing file %s\n",
+             mpi_size, filename);
+      printf(" This tests the MPIO different patterns for 9 variables with MPIO write.\n");
+      printf("There are four patterns. -c 9 contiguous writes -i 9 interleaved writes -p 3 writes -t 1 write.\n");
+      pFile = fopen("timing.txt", "a");
     }
 
-
     if ((mpi_err = MPI_File_open(MPI_COMM_WORLD, filename,
-	    MPI_MODE_RDWR | MPI_MODE_CREATE ,
-	    MPI_INFO_NULL, &fh))
-	    != MPI_SUCCESS){
-	    MPI_Error_string(mpi_err, mpi_err_str, &mpi_err_strlen);
-	    PRINTID;
-	    printf("MPI_File_open failed (%s)\n", mpi_err_str);
-	    MPI_Abort(MPI_COMM_WORLD, 1);
+                                 MPI_MODE_RDWR | MPI_MODE_CREATE ,
+                                 MPI_INFO_NULL, &fh))
+        != MPI_SUCCESS){
+      MPI_Error_string(mpi_err, mpi_err_str, &mpi_err_strlen);
+      PRINTID;
+      printf("MPI_File_open failed (%s)\n", mpi_err_str);
+      MPI_Abort(MPI_COMM_WORLD, 1);
     }
 
     // Allocate total amount of data per process to the buffer
@@ -109,7 +113,7 @@ int main(int ac, char **av)
       if( j % (buf_size_per_proc) == 0) {
         i = 0.;
       } else {
-        i=i+1;
+        i+=1;
       }
       writedata[j] = (double)(mpi_rank*buf_size_per_proc + i);
       //   printf(" WRITE data[%d:%d] %lf\n", mpi_rank, j, writedata[j]);
@@ -117,7 +121,6 @@ int main(int ac, char **av)
 
     /* each process writes some data */
     if(ac >1) {
-    
         if(strcmp(av[1],"-c")==0) {
             if(mpi_rank == 0) 
                 printf("coming to contiguous pattern\n"); 
@@ -229,22 +232,18 @@ int main(int ac, char **av)
      		mpiio_etime = MPI_Wtime();
      		total_time = mpiio_etime - mpiio_stime;
     	}
-    
-  
     	MPI_Reduce(&total_time, &Max_total_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     	MPI_Reduce(&total_time, &Sum_total_time, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     	MPI_Reduce(&total_time, &Min_total_time, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
     	if(mpi_rank == 0) {
-          rate = (double)(buf_size*sizeof(double)*num_vars)/Max_total_time/(1024.*1024.);
-          printf("%d Procs WROTE %d variables in %f seconds. \n",mpi_size,num_vars,Max_total_time);
-          printf(" WRITE Bandwidth is %f MB/s.\n",rate);
-          printf("Total WRITE time for all processes is %f seconds.\n",Sum_total_time);
-          printf("Minimum WRITE time for all processes is %f seconds.\n",Min_total_time);
-          //  rate = (double)(buf_size*sizeof(double)*num_vars)/(Sum_total_time/mpi_size)/(1024.*1024.);
-          //  printf("Average WRITE time for all processes is %f seconds.\n",Sum_total_time/mpi_size);
-          //   printf(" Average WRITE Bandwidth is %f MB/s.\n",rate);
-          
-          fprintf(pFile, "%s %d %f", av[1], mpi_size, rate);
+          gb = (long int)(buf_size*sizeof(double)*num_vars)/(1024*1024);
+          rate_min = (double)(gb/Max_total_time);
+          rate_max = (double)(gb/Min_total_time);
+          rate_avg = (double)(gb/(total_time/mpi_size));
+          printf("%d Procs WRITE %d variables, %ld MB \n",mpi_size,num_vars, buf_size*sizeof(double)*num_vars);
+          printf("WRITE Bandwidth is avg, min, max: %f %f %f MB/s.\n",rate_min, rate_avg, rate_max);
+          fprintf(pFile, "%s %d %f %f %f", av[1], mpi_size, rate_min, rate_avg, rate_max);
+          fclose(pFile);
         }	
   
     }
@@ -358,15 +357,13 @@ int main(int ac, char **av)
       MPI_Reduce(&total_time, &Sum_total_time, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
       MPI_Reduce(&total_time, &Min_total_time, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
       if(mpi_rank == 0) {
-        rate = (double)(buf_size*sizeof(double)*num_vars)/Max_total_time/(1024.*1024.);
-        printf("%d Procs READ %d variables in %f seconds. \n",mpi_size,num_vars,Max_total_time);
-        printf(" READ Bandwidth is %f MB/s.\n",rate);
-        printf("Total READ time for all processes is %f seconds.\n",Sum_total_time);
-        printf("Minimum READ time for all processes is %f seconds.\n",Min_total_time);
-        //  rate = (double)(buf_size*sizeof(double)*num_vars)/(Sum_total_time/mpi_size)/(1024.*1024.);
-        //  printf("Average READ time for all processes is %f seconds.\n",Sum_total_time/mpi_size);
-        //  printf(" Average READ Bandwidth is %f MB/s.\n",rate);
-        fprintf(pFile, " %f \n", rate);
+        gb = (long int)(buf_size*sizeof(double)*num_vars)/(1024*1024);
+        rate_min = (double)(gb/Max_total_time);
+        rate_max = (double)(gb/Min_total_time);
+        rate_avg = (double)(gb/(total_time/mpi_size));
+        printf("%d Procs READ %d variables, %ld MB \n",mpi_size,num_vars, buf_size*sizeof(double)*num_vars);
+        printf("READ Bandwidth is avg, min, max: %f %f %f MB/s.\n",rate_min, rate_avg, rate_max);
+        fprintf(pFile, "%s %d %f %f %f", av[1], mpi_size, rate_min, rate_avg, rate_max);
         fclose(pFile);
       }	
 

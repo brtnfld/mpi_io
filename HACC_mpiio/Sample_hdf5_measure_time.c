@@ -62,13 +62,14 @@ int main(int ac, char **av)
     //int64_t  buf_size = 1024LL;
     
     /* Number of variables, currently is 9 like Generic IO. */
-    int num_vars  = 9;
+    int num_vars  = 12;
     int rest_num =0;
     MPI_Offset  mpi_off = 0;
     MPI_Status  mpi_stat;
     char* writedata = NULL;
     double *writedata2;
     double *readdata;
+    long int gb;
 
     int64_t buf_size_per_proc = 0;
     double mpiio_stime =0;
@@ -77,7 +78,7 @@ int main(int ac, char **av)
     double Max_total_time = 0;
     double Min_total_time = 0;
     double Sum_total_time = 0;
-    double rate = 0;
+    double rate_avg=0., rate_min=0., rate_max=0.;
 
     // HDF5
     hid_t file_id;              /* File ID */
@@ -278,13 +279,12 @@ int main(int ac, char **av)
       writedata = malloc(buf_size_per_proc*num_vars);
     }
     /* each process writes some data */
-
+    total_time = 0.;
     if(ac >1) {
         if(strcmp(av[1],"-c")==0) {
             if(mpi_rank == 0) 
                 printf("coming to contiguous pattern\n");
 
-            mpiio_stime = MPI_Wtime();
             if(hdf5) {
               for (i=0; i < num_vars; i++) {
                 dset_id = H5Dopen(file_id, DATASETNAME[i], H5P_DEFAULT);
@@ -303,23 +303,22 @@ int main(int ac, char **av)
                 ret = H5Sselect_hyperslab(mem_space_id, H5S_SELECT_SET, mem_start, NULL, mem_count, NULL);
                 
                 /* Write data independently */
+                mpiio_stime = MPI_Wtime();
                 ret = H5Dwrite(dset_id, H5T_NATIVE_DOUBLE, mem_space_id, file_space_id, H5P_DEFAULT, writedata2);
+                mpiio_etime = MPI_Wtime();
+                total_time += mpiio_etime - mpiio_stime;
                 /* Close memory dataspace */
                 ret = H5Sclose(mem_space_id);
                 /* Close dataset collectively */
                 ret = H5Dclose(dset_id);
               }
             }
-
-           mpiio_etime = MPI_Wtime();
-           total_time = mpiio_etime - mpiio_stime;
         }
         else if(strcmp(av[1],"-i")==0) {
 
             if(mpi_rank == 0) 
                 printf("Coming to the interleaved pattern.\n");
  
-            mpiio_stime = MPI_Wtime();
             if(hdf5) {
 
               dset_id = H5Dopen(file_id, "ALLVAR", H5P_DEFAULT);
@@ -338,8 +337,11 @@ int main(int ac, char **av)
               ret = H5Sselect_hyperslab(mem_space_id, H5S_SELECT_SET, mem_start, NULL, mem_count, NULL);
              
               /* Write data independently */
+              mpiio_stime = MPI_Wtime();
               ret = H5Dwrite(dset_id, Hmemtype, mem_space_id, file_space_id, H5P_DEFAULT, Hdata);
 
+              mpiio_etime = MPI_Wtime();
+              total_time += mpiio_etime - mpiio_stime;
               /* Close memory dataspace */
               ret = H5Sclose(mem_space_id);
               /* Close dataset collectively */
@@ -347,9 +349,6 @@ int main(int ac, char **av)
 
             }
 
-            mpiio_etime = MPI_Wtime();
-            total_time = mpiio_etime - mpiio_stime;
-            
             ret = H5Tclose (Hmemtype);
             free(Hdata);
         }
@@ -378,16 +377,14 @@ int main(int ac, char **av)
     MPI_Reduce(&total_time, &Sum_total_time, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&total_time, &Min_total_time, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
     if(mpi_rank == 0) {
-      rate = (double)(buf_size*sizeof(double)*num_vars)/Max_total_time/(1024.*1024.); //(double)(size)/Max_total_time/(1024.*1024.);
-      printf("%d Procs Wrote %d variables in %f seconds. \n",mpi_size,num_vars,Max_total_time);
-      printf(" Bandwidth is %f MB/s.\n",rate);
-      printf("Total IO time for all processes is %f seconds.\n",Sum_total_time);
-      printf("Minimum IO time for all processes is %f seconds.\n",Min_total_time);
-      //   rate = (double)(buf_size*num_vars)/(Sum_total_time/mpi_size)/(1024.*1024.);
-      //   printf("Average IO time for all processes is %f seconds.\n",Sum_total_time/mpi_size);
-      //  printf(" Average Bandwidth is %f MB/s.\n",rate);
-      
-      fprintf(pFile, "%s %d %f", av[1], mpi_size, rate); 
+      gb = (long int)(buf_size*sizeof(double)*num_vars)/(1024*1024);
+      rate_min = (double)(gb/Max_total_time);
+      rate_max = (double)(gb/Min_total_time);
+      rate_avg = (double)(gb/(total_time/mpi_size));
+      printf("%d Procs WRITE %d variables, %ld MB \n",mpi_size,num_vars, buf_size*sizeof(double)*num_vars);
+      printf("WRITE Bandwidth is avg, min, max: %f %f %f MB/s.\n",rate_min, rate_avg, rate_max);
+      fprintf(pFile, "%s %d %f %f %f", av[1], mpi_size, rate_min, rate_avg, rate_max);
+      fclose(pFile);
     }
 
     hsize_t size_1;
@@ -408,8 +405,6 @@ int main(int ac, char **av)
     
     readdata = malloc(buf_size_per_proc*num_vars);
         
-    mpiio_stime = MPI_Wtime();
-
     if(strcmp(av[1],"-c")==0) {
       
       for (i=0; i < num_vars; i++) {
@@ -429,7 +424,11 @@ int main(int ac, char **av)
         ret = H5Sselect_hyperslab(mem_space_id, H5S_SELECT_SET, mem_start, NULL, mem_count, NULL);
 
         /* Read data independently */
+        
+        mpiio_stime = MPI_Wtime();
         ret = H5Dread(dset_id, H5T_NATIVE_DOUBLE, mem_space_id, file_space_id, H5P_DEFAULT, readdata);
+        mpiio_etime = MPI_Wtime();
+        total_time = mpiio_etime - mpiio_stime;
         /* Close memory dataspace */
         ret = H5Sclose(mem_space_id);
         /* Close dataset collectively */
@@ -449,8 +448,6 @@ int main(int ac, char **av)
         }
 #endif
       }
-      mpiio_etime = MPI_Wtime();
-      total_time = mpiio_etime - mpiio_stime;
       
       free(readdata);
       ret = H5Fclose(file_id);
@@ -459,7 +456,6 @@ int main(int ac, char **av)
 
       readdata = malloc(buf_size_per_proc*num_vars);
 
-      mpiio_stime = MPI_Wtime();
 
       for (i=0; i < num_vars; i++) {
         file_dims[0] = mem_dims[0]*mpi_size;
@@ -483,7 +479,11 @@ int main(int ac, char **av)
         ret = H5Sselect_hyperslab(mem_space_id, H5S_SELECT_SET, mem_start, NULL, mem_count, NULL);
 
         /* Read data independently */
+        mpiio_stime = MPI_Wtime();
         ret = H5Dread(dset_id, rtype, mem_space_id, file_space_id, H5P_DEFAULT, readdata);
+        mpiio_etime = MPI_Wtime();
+        total_time += mpiio_etime - mpiio_stime;
+
         /* Close memory dataspace */
         ret = H5Sclose(mem_space_id);
         /* Close dataset collectively */
@@ -504,8 +504,6 @@ int main(int ac, char **av)
 #endif
 
       }
-      mpiio_etime = MPI_Wtime();
-      total_time = mpiio_etime - mpiio_stime;
 
       ret = H5Fclose(file_id);
 
@@ -517,20 +515,14 @@ int main(int ac, char **av)
     MPI_Reduce(&total_time, &Sum_total_time, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&total_time, &Min_total_time, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
     if(mpi_rank == 0) {
-      printf("%ld size \n", size);
-      //   rate = (double)(buf_size*num_vars)/Max_total_time/(1024.*1024.);
-      rate = (double)(buf_size*sizeof(double)*num_vars)/Max_total_time/(1024.*1024.); //(double)(size)/Max_total_time/(1024.*1024.);
-      //  rate = (double)(size)/Max_total_time/(1024.*1024.);
-      printf("********** \n %d Procs %s READ %d variables in %f seconds. \n",mpi_size,av[1], num_vars,Max_total_time);
-      printf(" Bandwidth is %f MB/s.\n",rate);
-      printf("Total IO time for all processes is %f seconds.\n",Sum_total_time);
-      printf("Minimum IO time for all processes is %f seconds.\n",Min_total_time);
-      // rate = (double)(buf_size*num_vars)/(Sum_total_time/mpi_size)/(1024.*1024.);
-      //printf("Average IO time for all processes is %f seconds.\n",Sum_total_time/mpi_size);
-      //printf(" Average Bandwidth is %f MB/s.\n",rate);
-      
-      fprintf(pFile, " %f\n", rate);
-      fclose(pFile);
+        gb = (long int)(buf_size*sizeof(double)*num_vars)/(1024*1024);
+        rate_min = (double)(gb/Max_total_time);
+        rate_max = (double)(gb/Min_total_time);
+        rate_avg = (double)(gb/(total_time/mpi_size));
+        printf("%d Procs READ %d variables, %ld MB \n",mpi_size,num_vars, buf_size*sizeof(double)*num_vars);
+        printf("READ Bandwidth is avg, min, max: %f %f %f MB/s.\n",rate_min, rate_avg, rate_max);
+        fprintf(pFile, "%s %d %f %f %f", av[1], mpi_size, rate_min, rate_avg, rate_max);
+        fclose(pFile);
     }	
     
 #if 0
