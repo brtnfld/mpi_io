@@ -56,7 +56,7 @@ int main(int ac, char **av)
     int  nerrors = 0;		/* number of errors */
     /* buffer size is the total size for one variable. */
     /* The buffer size will be 8 GB, 72 GB total (9* 1073741824*8/(1024*1024*1024)). */
-    int64_t  buf_size = 1073741824LL;
+    int64_t  buf_size = 1213857792LL;
 
     //For debugging uncomment the following line
     //int64_t  buf_size = 1024LL;
@@ -517,7 +517,7 @@ int main(int ac, char **av)
     MPI_Reduce(&total_time, &Sum_total_time, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&total_time, &Min_total_time, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
     if(mpi_rank == 0) {
-      printf("%lld size \n", size);
+      printf("%ld size \n", size);
       //   rate = (double)(buf_size*num_vars)/Max_total_time/(1024.*1024.);
       rate = (double)(buf_size*sizeof(double)*num_vars)/Max_total_time/(1024.*1024.); //(double)(size)/Max_total_time/(1024.*1024.);
       //  rate = (double)(size)/Max_total_time/(1024.*1024.);

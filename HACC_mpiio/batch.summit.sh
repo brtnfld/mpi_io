@@ -2,7 +2,7 @@
 #BSUB -P CSC298
 #BSUB -W 00:35
 # power 42
-#BSUB -nnodes 25 
+#BSUB -nnodes 64 
 #BSUB -J mpiio 
 #BSUB -o mpiio.%J
 #BSUB -e mpiio.%J
@@ -36,8 +36,8 @@ cd mpiio.$JID
 cp $LS_SUBCWD/$EXEC .
 cp $LS_SUBCWD/$EXECH .
 
-NPROCS="42 84 168 336 672 1344 2688 "
-NPROCS="128 256 512 1024"
+NPROCS="42 84 168 336 672 1344 2688"
+NPROCS="2688"
 for i in ${NPROCS}
 do
   for j in {1..4}
@@ -49,5 +49,6 @@ do
     jsrun -n $i ./$EXEC -c
   done 
   ls -aolF
+cp timing.txt $LS_SUBCWD/timing.txt_$LSB_JOBID
 done
 cp timing.txt $LS_SUBCWD/timing.txt_$LSB_JOBID
