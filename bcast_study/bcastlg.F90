@@ -1,4 +1,4 @@
-#define DEBUG 0
+#define DEBUG 1
 
 PROGRAM case1
 
@@ -8,7 +8,7 @@ PROGRAM case1
   IMPLICIT NONE
 
   INTEGER, DIMENSION(mpi_status_size) :: wstatus
-  INTEGER :: fh, k, i
+  INTEGER :: fh, k, i, index, slice_sz, chunk_sz
   INTEGER :: ierr, rank
   
   INTEGER(KIND=MPI_OFFSET_KIND) :: offset = 0
@@ -17,7 +17,7 @@ PROGRAM case1
   CHARACTER(len=32) :: arg
   character(len=128) filename
   INTEGER nprocs
-  INTEGER ndim, icnt, m
+  INTEGER ndim
 
   INTEGER, DIMENSION(:), ALLOCATABLE :: ndata
 
@@ -65,7 +65,7 @@ PROGRAM case1
 ! All the processes read the same data
 
   t1 = MPI_Wtime()
-
+#if 0
   CALL MPI_File_open(MPI_COMM_WORLD, filename,     &
        MPI_MODE_RDWR, MPI_INFO_NULL, fh, ierr)
      
@@ -86,44 +86,41 @@ PROGRAM case1
 #endif
 
   CALL MPI_File_close(fh, ierr)
+#endif
 
   t(1) = (MPI_Wtime() - t1)
 
   CALL MPI_Barrier(MPI_COMM_WORLD, ierr)
-
 ! read-proc0-and-bcast
 
   t1 = MPI_Wtime()
-
   IF(rank.EQ.0)THEN
-
      CALL MPI_File_open(MPI_COMM_SELF, "datafile.mpio",     &
           MPI_MODE_RDWR, &
           MPI_INFO_NULL, fh, ierr)
-
-     CALL MPI_File_set_view(fh, offset, MPI_INTEGER, MPI_INTEGER, "native", MPI_INFO_NULL, ierr)
-     CALL MPI_File_read(fh, ndata, ndim, MPI_INTEGER, wstatus, ierr )
-     CALL MPI_File_close(fh, ierr)        
   ENDIF
 
-! Bcast in 1GB increments
-  IF(ndim .GT. 268435456) THEN
-     icnt = 268435456
-     m = icnt/268435456
-     PRINT*,m,MOD(icnt,268435456)
-     DO k = 1, m
-        icnt = icnt + 268435456
+  chunk_sz = 4
+  index = 0
+  DO WHILE (index .LT. ndim)
 
-        IF(MOD(icnt,268435456).NE.0)THEN
-           CALL MPI_BCAST(ndata(k*268435456)+1, 268435456, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-        ELSE
-           PRINT*,(k-1)*268435456+1,ndim-icnt
-           CALL MPI_BCAST(ndata((k-1)*268435456+1), ndim-icnt, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-        ENDIF
-     ENDDO
-  ELSE
-     CALL MPI_BCAST(ndata, ndim, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+     slice_sz = MIN(chunk_sz, ndim-index)
+     
+     IF(rank.EQ.0)THEN
+        CALL MPI_File_read_at(fh, index, ndata(index+1), slice_sz, MPI_INTEGER, wstatus, ierr )
+     ENDIF
+
+     CALL MPI_BCAST(ndata(index+1), slice_sz, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+
+     index = index + chunk_sz
+
+  ENDDO
+
+  IF(rank.EQ.0)THEN
+     CALL MPI_File_close(fh, ierr)
   ENDIF
+
+
 
 #if DEBUG 
   DO k = 0, nprocs

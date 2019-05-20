@@ -56,7 +56,7 @@ main (int argc, char *argv[] )
     hsize_t nelm_indx = 0;
     hsize_t maxdims[1];
     hsize_t extdims[1],extdims2[1],
-      chunk[1] = {NVL/8};
+      chunk[1] = {NVL/4};
 
     hsize_t iext;
 
