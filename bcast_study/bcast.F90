@@ -16,7 +16,7 @@ PROGRAM case1
   DOUBLE PRECISION :: t1
   CHARACTER(len=32) :: arg
   INTEGER nprocs
-  INTEGER ndim
+  INTEGER ndim, icnt, m
 
   INTEGER, DIMENSION(:), ALLOCATABLE :: ndata
 
@@ -103,7 +103,25 @@ PROGRAM case1
      CALL MPI_File_close(fh, ierr)        
   ENDIF
 
-  CALL MPI_BCAST(ndata, ndim, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+! Bcast in 1GB increments
+  IF(ndim .GT. 268435456) THEN
+     icnt = 268435456
+     m = icnt/268435456
+     PRINT*,m,MOD(icnt,268435456)
+     DO k = 1, m
+        icnt = icnt + 268435456
+
+        IF(MOD(icnt,268435456).NE.0)THEN
+           CALL MPI_BCAST(ndata(k*268435456)+1, 268435456, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+        ELSE
+           PRINT*,(k-1)*268435456+1,ndim-icnt
+           CALL MPI_BCAST(ndata((k-1)*268435456+1), ndim-icnt, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+        ENDIF
+     ENDDO
+  ELSE
+     CALL MPI_BCAST(ndata, ndim, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+  ENDIF
+
 #if DEBUG 
   DO k = 0, nprocs
      IF(k.EQ.rank)THEN
