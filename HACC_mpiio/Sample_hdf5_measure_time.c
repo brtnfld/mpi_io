@@ -62,7 +62,7 @@ int main(int ac, char **av)
     //int64_t  buf_size = 1024LL;
     
     /* Number of variables, currently is 9 like Generic IO. */
-    int num_vars  = 12;
+    int num_vars  = 9;
     int rest_num =0;
     MPI_Offset  mpi_off = 0;
     MPI_Status  mpi_stat;
@@ -142,6 +142,10 @@ int main(int ac, char **av)
     if (mpi_rank==0){
       printf("Testing simple C HDF5 program with %d processes accessing file %s\n",mpi_size, filename);
       pFile = fopen("timing.txt", "a");
+    }
+
+    if(strcmp(av[1],"-t")==0) {
+      num_vars=1;
     }
 
 
