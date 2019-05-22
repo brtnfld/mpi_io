@@ -31,7 +31,7 @@
 
 #define PRINTID printf("Proc %d: ", mpi_rank)
 
-#define CHCK_VAL 0
+#define CHCK_VAL 1
 
 bool dequal(double a, double b, double epsilon)
 {
@@ -42,7 +42,7 @@ int main(int ac, char **av)
 {
     int  mpi_size, mpi_rank;
     MPI_File fh;
-    char *filename = "./mpitest.data";
+    char *filename = "./data.mpi";
     char mpi_err_str[MPI_MAX_ERROR_STRING];
     int  mpi_err_strlen;
     int  mpi_err;
@@ -55,15 +55,16 @@ int main(int ac, char **av)
 
     // (multiples of 32)
     //int64_t buf_size = 1073741824LL;
+    int64_t buf_size = 4194304;
     // Summit (multiples of 42)
-    int64_t buf_size = 1213857792LL;
+    //int64_t buf_size = 1213857792LL;
     //For debugging uncomment the following line
-    //int64_t  buf_size = 1024LL;
+    //int64_t  buf_size = 32768LL;
     double dexpect_val;
     
     /* Number of variables, currently is 9 like Generic IO. */
     // 12
-    int num_vars  = 12;
+    int num_vars  = 9;
     int rest_num =0;
     MPI_Offset  mpi_off = 0;
     MPI_Status  mpi_stat;
@@ -77,6 +78,7 @@ int main(int ac, char **av)
     double Max_total_time = 0;
     double Min_total_time = 0;
     double Sum_total_time = 0;
+    int    Sum_nerrors = 0;
     double rate_avg=0., rate_min=0., rate_max=0.;
     FILE *pFile;
 
@@ -96,7 +98,7 @@ int main(int ac, char **av)
     }
 
     if ((mpi_err = MPI_File_open(MPI_COMM_WORLD, filename,
-                                 MPI_MODE_RDWR | MPI_MODE_CREATE ,
+                                 MPI_MODE_CREATE|MPI_MODE_WRONLY,
                                  MPI_INFO_NULL, &fh))
         != MPI_SUCCESS){
       MPI_Error_string(mpi_err, mpi_err_str, &mpi_err_strlen);
@@ -104,10 +106,16 @@ int main(int ac, char **av)
       printf("MPI_File_open failed (%s)\n", mpi_err_str);
       MPI_Abort(MPI_COMM_WORLD, 1);
     }
+    if(ac >1) {
+        if(strcmp(av[1],"-t")==0) {
+          num_vars = 1;
+        }
+    }
+
 
     // Allocate total amount of data per process to the buffer
-    writedata = malloc(buf_size*num_vars/mpi_size*sizeof(double));
-    
+    writedata = malloc(buf_size_per_proc*num_vars*sizeof(double));
+
     i = 0;
     for (j=0; j < buf_size_per_proc*num_vars; j++){
       if( j % (buf_size_per_proc) == 0) {
@@ -118,6 +126,7 @@ int main(int ac, char **av)
       writedata[j] = (double)(mpi_rank*buf_size_per_proc + i);
       //   printf(" WRITE data[%d:%d] %lf\n", mpi_rank, j, writedata[j]);
     }
+
 
     /* each process writes some data */
     if(ac >1) {
@@ -166,14 +175,14 @@ int main(int ac, char **av)
         }
     
         else if(strcmp(av[1],"-t")==0) {
-            buf_size_per_proc = buf_size*num_vars/mpi_size*sizeof(double);
-            mpi_off = mpi_rank *buf_size_per_proc*sizeof(double);
-            if(mpi_rank == 0) 
+            mpi_off = buf_size_per_proc*mpi_rank*num_vars*sizeof(double);
+            if(mpi_rank == 0)
                 printf("Coming to one MPI-IO write with the atomic datatype.\n");
 
             // Each process has a contiuous write.
             mpiio_stime = MPI_Wtime();
-            if ((mpi_err = MPI_File_write_at(fh, mpi_off, writedata, buf_size_per_proc, MPI_BYTE,
+
+            if ((mpi_err = MPI_File_write_at(fh, mpi_off, writedata, buf_size_per_proc*sizeof(double), MPI_BYTE,
                  &mpi_stat))
                  != MPI_SUCCESS){
                 MPI_Error_string(mpi_err, mpi_err_str, &mpi_err_strlen);
@@ -239,11 +248,11 @@ int main(int ac, char **av)
           gb = (long int)(buf_size*sizeof(double)*num_vars)/(1024*1024);
           rate_min = (double)(gb/Max_total_time);
           rate_max = (double)(gb/Min_total_time);
-          rate_avg = (double)(gb/(total_time/mpi_size));
-          printf("%d Procs WRITE %d variables, %ld MB \n",mpi_size,num_vars, buf_size*sizeof(double)*num_vars);
+          rate_avg = (double)(gb/(Sum_total_time/mpi_size));
+          printf("%d Procs WRITE %d variables, %ld MB \n",mpi_size,num_vars, gb);
+          printf("WRITE time is avg, min, max: %lf %f %f MB/s.\n", Min_total_time,(total_time/mpi_size),Max_total_time);
           printf("WRITE Bandwidth is avg, min, max: %f %f %f MB/s.\n",rate_min, rate_avg, rate_max);
-          fprintf(pFile, "%s %d %f %f %f", av[1], mpi_size, rate_min, rate_avg, rate_max);
-          fclose(pFile);
+          fprintf(pFile, "%s %d %f %f %f\n", av[1], mpi_size, rate_min, rate_avg, rate_max);
         }	
   
     }
@@ -267,7 +276,8 @@ int main(int ac, char **av)
     MPI_Barrier(MPI_COMM_WORLD);
     abort();
 #endif
-    
+ 
+
     if ((mpi_err = MPI_File_open(MPI_COMM_WORLD, filename,
                                  MPI_MODE_RDONLY,
                                  MPI_INFO_NULL, &fh))
@@ -280,15 +290,16 @@ int main(int ac, char **av)
     
     // Allocate total amount of data per process to the buffer
     readdata = malloc(buf_size*num_vars/mpi_size*sizeof(double));
-
+  
 
     if(ac >1) {
-      
+
       if(strcmp(av[1],"-c")==0) {
+
         if(mpi_rank == 0)
           printf("coming to contiguous pattern\n"); 
         mpi_off = buf_size_per_proc*mpi_rank*sizeof(double);
-        mpiio_stime = MPI_Wtime(); 
+        mpiio_stime = MPI_Wtime();
         for (i=0; i < num_vars; i++) {
           if ((mpi_err = MPI_File_read_at(fh, mpi_off, readdata, buf_size_per_proc*sizeof(double), MPI_BYTE,
                                            &mpi_stat))
@@ -303,7 +314,7 @@ int main(int ac, char **av)
 #if CHCK_VAL
           for (j=0; j < buf_size_per_proc; j++){
 
-	    dexpect_val = (double)(mpi_rank*buf_size/mpi_size + j);
+	    dexpect_val = (double)(mpi_rank*buf_size_per_proc + j);
             
             if(!dequal(readdata[j], dexpect_val, 1.0e-6)) {
               PRINTID;
@@ -352,29 +363,32 @@ int main(int ac, char **av)
         mpiio_etime = MPI_Wtime();
         total_time = mpiio_etime - mpiio_stime;
       }
-
+ 
       MPI_Reduce(&total_time, &Max_total_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
       MPI_Reduce(&total_time, &Sum_total_time, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
       MPI_Reduce(&total_time, &Min_total_time, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
+      MPI_Reduce(&nerrors, &Sum_nerrors, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
       if(mpi_rank == 0) {
         gb = (long int)(buf_size*sizeof(double)*num_vars)/(1024*1024);
         rate_min = (double)(gb/Max_total_time);
         rate_max = (double)(gb/Min_total_time);
-        rate_avg = (double)(gb/(total_time/mpi_size));
-        printf("%d Procs READ %d variables, %ld MB \n",mpi_size,num_vars, buf_size*sizeof(double)*num_vars);
+        rate_avg = (double)(gb/(Sum_total_time/mpi_size));
+        printf("%d Procs READ %d variables, %ld MB \n",mpi_size,num_vars, gb);
         printf("READ Bandwidth is avg, min, max: %f %f %f MB/s.\n",rate_min, rate_avg, rate_max);
-        fprintf(pFile, "%s %d %f %f %f", av[1], mpi_size, rate_min, rate_avg, rate_max);
+#if CHCK_VAL
+        printf("NUMBER OF ERRORS = %d \n",Sum_nerrors);
+#endif
+        fprintf(pFile, "%s %d %f %f %f\n", av[1], mpi_size, rate_min, rate_avg, rate_max);
         fclose(pFile);
-      }	
-
+      }
 
     }
 
     free(readdata);
-    
     MPI_File_close(&fh);
+   
     
-    
+
     MPI_Finalize();
 #if 0
     /* each process reads all data and verify. */

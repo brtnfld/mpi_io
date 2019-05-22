@@ -13,4 +13,4 @@ Sample_hdf5_measure_time: Sample_hdf5_measure_time.c
 	$(CC2) -o $@ $^ $(CFLAGS)
 
 clean:
-	rm -f Sample_mpio_measure_time Sample_hdf5_measure_time
+	rm -f *.o Sample_mpio_measure_time Sample_hdf5_measure_time
