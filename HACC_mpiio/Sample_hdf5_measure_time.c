@@ -60,7 +60,7 @@ int main(int ac, char **av)
 
     //For debugging uncomment the following line
     //int64_t  buf_size = 1024LL;
-    int64_t buf_size = 4194304;
+    //int64_t buf_size = 4194304;
     
     /* Number of variables, currently is 9 like Generic IO. */
     int num_vars  = 9;
@@ -358,13 +358,14 @@ int main(int ac, char **av)
     MPI_Reduce(&total_time, &Sum_total_time, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&total_time, &Min_total_time, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
     if(mpi_rank == 0) {
-      gb = (long int)(buf_size*sizeof(double)*num_vars)/(1024*1024);
+      gb = (long int)(buf_size*sizeof(double)*num_vars)/(1024*1024*1024);
       rate_min = (double)(gb/Max_total_time);
       rate_max = (double)(gb/Min_total_time);
       rate_avg = (double)(gb/(Sum_total_time/mpi_size));
       printf("%d Procs WRITE %d variables, %ld MB \n",mpi_size,num_vars, gb);
-      printf("WRITE Bandwidth is avg, min, max: %f %f %f MB/s.\n",rate_min, rate_avg, rate_max);
-      fprintf(pFile, "%s %d %f %f %f\n", av[1], mpi_size, rate_min, rate_avg, rate_max);
+      printf("WRITE time is avg, min, max: %lf %f %f s.\n", Sum_total_time/mpi_size, Min_total_time, Max_total_time);
+      printf("WRITE Bandwidth is avg, min, max: %f %f %f GB/s.\n",rate_avg ,rate_min, rate_max);
+      fprintf(pFile, "%s %d %f %f %f\n", av[1], mpi_size, rate_avg, rate_min, rate_max);
     }
     hsize_t size_1;
 
@@ -493,16 +494,17 @@ int main(int ac, char **av)
     MPI_Reduce(&total_time, &Min_total_time, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
     MPI_Reduce(&nerrors, &Sum_nerrors, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
     if(mpi_rank == 0) {
-        gb = (long int)(buf_size*sizeof(double)*num_vars)/(1024*1024);
+        gb = (long int)(buf_size*sizeof(double)*num_vars)/(1024*1024*1024);
         rate_min = (double)(gb/Max_total_time);
         rate_max = (double)(gb/Min_total_time);
         rate_avg = (double)(gb/(Sum_total_time/mpi_size));
-        printf("%d Procs READ %d variables, %ld MB \n",mpi_size,num_vars, gb);
-        printf("READ Bandwidth is avg, min, max: %f %f %f MB/s.\n",rate_min, rate_avg, rate_max);
+        printf("%d Procs READ %d variables, %ld GB \n",mpi_size,num_vars, gb);
+        printf("READ time is avg, min, max: %lf %f %f s.\n", Sum_total_time/mpi_size, Min_total_time, Max_total_time);
+        printf("READ Bandwidth is avg, min, max: %f %f %f MB/s.\n", rate_avg, rate_min, rate_max);
 #if CHCK_VAL
         printf("NUMBER OF ERRORS = %d \n",Sum_nerrors);
 #endif
-        fprintf(pFile, "%s %d %f %f %f\n", av[1], mpi_size, rate_min, rate_avg, rate_max);
+        fprintf(pFile, "%s %d %f %f %f\n", av[1], mpi_size, rate_avg, rate_min, rate_max);
         fclose(pFile);
     }
 

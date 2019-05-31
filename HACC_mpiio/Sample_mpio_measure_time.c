@@ -55,9 +55,9 @@ int main(int ac, char **av)
 
     // (multiples of 32)
     //int64_t buf_size = 1073741824LL;
-    int64_t buf_size = 4194304;
+    //int64_t buf_size = 4194304;
     // Summit (multiples of 42)
-    //int64_t buf_size = 1213857792LL;
+    int64_t buf_size = 1213857792LL;
     //For debugging uncomment the following line
     //int64_t  buf_size = 32768LL;
     double dexpect_val;
@@ -241,18 +241,19 @@ int main(int ac, char **av)
      		mpiio_etime = MPI_Wtime();
      		total_time = mpiio_etime - mpiio_stime;
     	}
+
     	MPI_Reduce(&total_time, &Max_total_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     	MPI_Reduce(&total_time, &Sum_total_time, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     	MPI_Reduce(&total_time, &Min_total_time, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
     	if(mpi_rank == 0) {
-          gb = (long int)(buf_size*sizeof(double)*num_vars)/(1024*1024);
+          gb = (long int)(buf_size*sizeof(double)*num_vars)/(1024*1024*1024);
           rate_min = (double)(gb/Max_total_time);
           rate_max = (double)(gb/Min_total_time);
           rate_avg = (double)(gb/(Sum_total_time/mpi_size));
-          printf("%d Procs WRITE %d variables, %ld MB \n",mpi_size,num_vars, gb);
-          printf("WRITE time is avg, min, max: %lf %f %f MB/s.\n", Min_total_time,(total_time/mpi_size),Max_total_time);
-          printf("WRITE Bandwidth is avg, min, max: %f %f %f MB/s.\n",rate_min, rate_avg, rate_max);
-          fprintf(pFile, "%s %d %f %f %f\n", av[1], mpi_size, rate_min, rate_avg, rate_max);
+          printf("%d Procs WRITE %d variables, %ld MB \n",mpi_size, num_vars, gb);
+          printf("WRITE time is avg, min, max: %lf %f %f s.\n", Sum_total_time/mpi_size, Min_total_time, Max_total_time);
+          printf("WRITE Bandwidth is avg, min, max: %f %f %f MB/s.\n", rate_avg, rate_min, rate_max);
+          fprintf(pFile, "%s %d %f %f %f\n", av[1], mpi_size, rate_avg, rate_min, rate_max);
         }	
   
     }
@@ -369,16 +370,17 @@ int main(int ac, char **av)
       MPI_Reduce(&total_time, &Min_total_time, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
       MPI_Reduce(&nerrors, &Sum_nerrors, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
       if(mpi_rank == 0) {
-        gb = (long int)(buf_size*sizeof(double)*num_vars)/(1024*1024);
+        gb = (long int)(buf_size*sizeof(double)*num_vars)/(1024*1024*1024);
         rate_min = (double)(gb/Max_total_time);
         rate_max = (double)(gb/Min_total_time);
         rate_avg = (double)(gb/(Sum_total_time/mpi_size));
         printf("%d Procs READ %d variables, %ld MB \n",mpi_size,num_vars, gb);
-        printf("READ Bandwidth is avg, min, max: %f %f %f MB/s.\n",rate_min, rate_avg, rate_max);
+        printf("READ time is avg, min, max: %lf %f %f s.\n", Sum_total_time/mpi_size, Min_total_time, Max_total_time);
+        printf("READ Bandwidth is avg, min, max: %f %f %f MB/s.\n", rate_avg, rate_min, rate_max);
 #if CHCK_VAL
         printf("NUMBER OF ERRORS = %d \n",Sum_nerrors);
 #endif
-        fprintf(pFile, "%s %d %f %f %f\n", av[1], mpi_size, rate_min, rate_avg, rate_max);
+        fprintf(pFile, "%s %d %f %f %f\n", av[1], mpi_size, rate_avg, rate_min, rate_max);
         fclose(pFile);
       }
 
