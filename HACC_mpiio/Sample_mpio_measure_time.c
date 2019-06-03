@@ -31,7 +31,7 @@
 
 #define PRINTID printf("Proc %d: ", mpi_rank)
 
-#define CHCK_VAL 1
+#define CHCK_VAL 0
 
 bool dequal(double a, double b, double epsilon)
 {
@@ -60,6 +60,7 @@ int main(int ac, char **av)
     int64_t buf_size = 1213857792LL;
     //For debugging uncomment the following line
     //int64_t  buf_size = 32768LL;
+    //int64_t  buf_size = 1024;
     double dexpect_val;
     
     /* Number of variables, currently is 9 like Generic IO. */
@@ -250,9 +251,9 @@ int main(int ac, char **av)
           rate_min = (double)(gb/Max_total_time);
           rate_max = (double)(gb/Min_total_time);
           rate_avg = (double)(gb/(Sum_total_time/mpi_size));
-          printf("%d Procs WRITE %d variables, %ld MB \n",mpi_size, num_vars, gb);
+          printf("%d Procs WRITE %d variables, %ld GB \n",mpi_size, num_vars, gb);
           printf("WRITE time is avg, min, max: %lf %f %f s.\n", Sum_total_time/mpi_size, Min_total_time, Max_total_time);
-          printf("WRITE Bandwidth is avg, min, max: %f %f %f MB/s.\n", rate_avg, rate_min, rate_max);
+          printf("WRITE Bandwidth is avg, min, max: %f %f %f GB/s.\n", rate_avg, rate_min, rate_max);
           fprintf(pFile, "%s %d %f %f %f\n", av[1], mpi_size, rate_avg, rate_min, rate_max);
         }	
   
@@ -295,7 +296,7 @@ int main(int ac, char **av)
 
     if(ac >1) {
 
-      if(strcmp(av[1],"-c")==0) {
+      if(strcmp(av[1],"-c")==0 || strcmp(av[1],"-t")==0) {
 
         if(mpi_rank == 0)
           printf("coming to contiguous pattern\n"); 
@@ -374,9 +375,9 @@ int main(int ac, char **av)
         rate_min = (double)(gb/Max_total_time);
         rate_max = (double)(gb/Min_total_time);
         rate_avg = (double)(gb/(Sum_total_time/mpi_size));
-        printf("%d Procs READ %d variables, %ld MB \n",mpi_size,num_vars, gb);
+        printf("%d Procs READ %d variables, %ld GB \n",mpi_size,num_vars, gb);
         printf("READ time is avg, min, max: %lf %f %f s.\n", Sum_total_time/mpi_size, Min_total_time, Max_total_time);
-        printf("READ Bandwidth is avg, min, max: %f %f %f MB/s.\n", rate_avg, rate_min, rate_max);
+        printf("READ Bandwidth is avg, min, max: %f %f %f GB/s.\n", rate_avg, rate_min, rate_max);
 #if CHCK_VAL
         printf("NUMBER OF ERRORS = %d \n",Sum_nerrors);
 #endif
