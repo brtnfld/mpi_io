@@ -47,7 +47,7 @@ int main(int ac, char **av)
 {
     MPI_File fh;
     FILE *pFile;
-    char *filename = "./mpitest.data";
+    char *filename = "./test.h5";
     char mpi_err_str[MPI_MAX_ERROR_STRING];
     int  mpi_err_strlen;
     int  mpi_err;
