@@ -57,8 +57,14 @@ int main(int ac, char **av)
     //int64_t buf_size = 1073741824LL;
     //int64_t buf_size = 4194304;
     // Summit (multiples of 42)
-    int64_t buf_size = 1213857792LL;
-    //For debugging uncomment the following line
+    //int64_t buf_size = 1213857792LL;
+#ifdef SUMMIT // Summit (multiples of 42)
+    int64_t buf_size = 1213857792LL; 
+#else // (multiples of 32)
+    int64_t buf_size = 17179869184;
+#endif    
+
+//For debugging uncomment the following line
     //int64_t  buf_size = 32768LL;
     //int64_t  buf_size = 1024;
     double dexpect_val;

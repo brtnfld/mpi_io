@@ -56,8 +56,11 @@ int main(int ac, char **av)
     int  nerrors = 0;		/* number of errors */
     /* buffer size is the total size for one variable. */
     /* The buffer size will be 8 GB, 72 GB total (9* 1073741824*8/(1024*1024*1024)). */
-    int64_t  buf_size = 1213857792LL;
-
+#ifdef SUMMIT // Summit (multiples of 42)
+    int64_t buf_size = 1213857792LL;
+#else // (multiples of 32)
+    int64_t buf_size = 17179869184;
+#endif    
     //For debugging uncomment the following line
     // int64_t  buf_size = 1024LL;
     //int64_t buf_size = 4194304;
