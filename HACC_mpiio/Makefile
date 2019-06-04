@@ -1,8 +1,12 @@
 HDF5_DIR=$(HOME)/packages/hdf5_msb/build/hdf5
+HOSTNAME=`hostname -d`
 
 CC=mpicc
 CC2=$(HDF5_DIR)/bin/h5pcc
 
+ifneq (,$(findstring nersc,$(HOSTNAME)))
+	CC=cc
+endif
 
 all: Sample_mpio_measure_time Sample_hdf5_measure_time
 
