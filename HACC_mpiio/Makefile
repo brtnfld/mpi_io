@@ -1,13 +1,13 @@
-HDF5_DIR=$(HOME)/packages/hdf5_msb/build/hdf5
+HDF5_DIR=$(HOME)/packages/hdf5/build/hdf5
 HOSTNAME:=$(shell hostname -d)
 
 DEF=""
 ifneq (,$(findstring summit,$(HOSTNAME)))
-   DEF="-DSUMMIT"
+   DEF=-DSUMMIT
 endif
 
-CC="mpicc $(DEF)"
-CC2="$(HDF5_DIR)/bin/h5pcc $(DEF)"
+CC=mpicc $(DEF)
+CC2=$(HDF5_DIR)/bin/h5pcc $(DEF)
 
 ifneq (,$(findstring nersc,$(HOSTNAME)))
 	CC=cc
