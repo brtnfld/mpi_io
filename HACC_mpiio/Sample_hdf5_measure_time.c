@@ -24,6 +24,7 @@
 #include <sys/stat.h>
 #include <mpi.h>
 #include <math.h>
+#include <stdbool.h>
 #ifndef MPI_FILE_NULL           /*MPIO may be defined in mpi.h already       */
 #   include <mpio.h>
 #endif
@@ -224,10 +225,10 @@ int main(int ac, char **av)
       ret = H5Pset_fapl_mpio(fapl_id, MPI_COMM_WORLD, MPI_INFO_NULL);
 
       /* Create the file collectively */
-
+#if 0
       H5Pset_coll_metadata_write(fapl_id, 1);
       H5Pset_all_coll_metadata_ops(fapl_id, 1 );
-
+#endif
       file_id = H5Fopen(filename, H5F_ACC_RDWR, fapl_id);
       
       /* Release file access property list */
@@ -375,10 +376,10 @@ int main(int ac, char **av)
     ret = H5Pset_fapl_mpio(fapl_id, MPI_COMM_WORLD, MPI_INFO_NULL);
 
     /* Create the file collectively */
-
+#if 0
     H5Pset_coll_metadata_write(fapl_id, 1);
     H5Pset_all_coll_metadata_ops(fapl_id, 1 );
-
+#endif
     /* Read one variable at a time from the file */
     file_id = H5Fopen(filename, H5F_ACC_RDONLY, fapl_id);
     H5Pclose(fapl_id);
