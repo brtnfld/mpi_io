@@ -22,6 +22,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <sys/stat.h>
+#include <stdbool.h>
 #include <mpi.h>
 #include <math.h>
 #ifndef MPI_FILE_NULL           /*MPIO may be defined in mpi.h already       */
@@ -30,11 +31,10 @@
 /* HDF5 header file */
 #include "hdf5.h"
 
-
 #define RANK 1
 
 #define CHCK_VAL 0
-
+#define COLL_META 1
 #define PRINTID printf("Proc %d: ", mpi_rank)
 
 bool dequal(double a, double b, double epsilon)
@@ -59,7 +59,7 @@ int main(int ac, char **av)
 #ifdef SUMMIT // Summit (multiples of 42)
     int64_t buf_size = 1213857792LL;
 #else // (multiples of 32)
-    int64_t buf_size = 17179869184;
+    int64_t buf_size = 17179869184LL;
 #endif    
     //For debugging uncomment the following line
     // int64_t  buf_size = 1024LL;
@@ -223,14 +223,16 @@ int main(int ac, char **av)
       /* Create an HDF5 file access property list */
       fapl_id = H5Pcreate (H5P_FILE_ACCESS);
 
+      H5Pset_alignment(fapl_id, 1073741824, 8*1048576); 
+
       /* Set file access property list to use the MPI-IO file driver */
       ret = H5Pset_fapl_mpio(fapl_id, MPI_COMM_WORLD, MPI_INFO_NULL);
 
       /* Create the file collectively */
-
+#ifdef COLL_META
       H5Pset_coll_metadata_write(fapl_id, 1);
       H5Pset_all_coll_metadata_ops(fapl_id, 1 );
-
+#endif
       file_id = H5Fopen(filename, H5F_ACC_RDWR, fapl_id);
       
       /* Release file access property list */
@@ -378,10 +380,10 @@ int main(int ac, char **av)
     ret = H5Pset_fapl_mpio(fapl_id, MPI_COMM_WORLD, MPI_INFO_NULL);
 
     /* Create the file collectively */
-
+#ifdef COLL_META
     H5Pset_coll_metadata_write(fapl_id, 1);
-    H5Pset_all_coll_metadata_ops(fapl_id, 1 );
-
+    H5Pset_all_coll_metadata_ops(fapl_id, 1);
+#endif
     /* Read one variable at a time from the file */
     file_id = H5Fopen(filename, H5F_ACC_RDONLY, fapl_id);
     H5Pclose(fapl_id);
