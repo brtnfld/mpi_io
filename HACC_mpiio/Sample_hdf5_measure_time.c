@@ -22,6 +22,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <sys/stat.h>
+#include <stdbool.h>
 #include <mpi.h>
 #include <math.h>
 #include <stdbool.h>
@@ -31,11 +32,10 @@
 /* HDF5 header file */
 #include "hdf5.h"
 
-
 #define RANK 1
 
 #define CHCK_VAL 0
-
+#define COLL_META 1
 #define PRINTID printf("Proc %d: ", mpi_rank)
 
 bool dequal(double a, double b, double epsilon)
@@ -57,8 +57,11 @@ int main(int ac, char **av)
     int  nerrors = 0;		/* number of errors */
     /* buffer size is the total size for one variable. */
     /* The buffer size will be 8 GB, 72 GB total (9* 1073741824*8/(1024*1024*1024)). */
-    int64_t  buf_size = 1213857792LL;
-
+#ifdef SUMMIT // Summit (multiples of 42)
+    int64_t buf_size = 1213857792LL;
+#else // (multiples of 32)
+    int64_t buf_size = 17179869184LL;
+#endif    
     //For debugging uncomment the following line
     // int64_t  buf_size = 1024LL;
     //int64_t buf_size = 4194304;
@@ -128,6 +131,7 @@ int main(int ac, char **av)
     hid_t rtype;
     struct stat st;
     off_t size;
+    hid_t dcpl;
 
     MPI_Init(&ac, &av);
     MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
@@ -194,23 +198,32 @@ int main(int ac, char **av)
           for (i=0; i < num_vars; i++) {
             
             file_space_id = H5Screate_simple(1, file_dims, NULL);
+
+            dcpl = H5Pcreate(H5P_DATASET_CREATE);
+            H5Pset_alloc_time(dcpl, H5D_ALLOC_TIME_EARLY);
+            H5Pset_fill_time(dcpl, H5D_FILL_TIME_NEVER);
             
             /* Create the dataset collectively */
             dset_id = H5Dcreate2(file_id, DATASETNAME[i], H5T_NATIVE_DOUBLE,
                                  file_space_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
             ret = H5Sclose(file_space_id);
+            ret = H5Pclose(dcpl);
             ret = H5Dclose(dset_id);
           }
         } else {
 
           file_space_id = H5Screate_simple(1, file_dims, NULL);
             
+          dcpl = H5Pcreate(H5P_DATASET_CREATE);
+          H5Pset_alloc_time(dcpl, H5D_ALLOC_TIME_EARLY);
+          H5Pset_fill_time(dcpl, H5D_FILL_TIME_NEVER);
             /* Create the dataset collectively */
           dset_id = H5Dcreate2(file_id, "ALLVAR", Hmemtype,
                                  file_space_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
           ret = H5Sclose(file_space_id);
+          ret = H5Pclose(dcpl);
           ret = H5Dclose(dset_id);
         }
         ret = H5Fclose(file_id);
@@ -221,11 +234,13 @@ int main(int ac, char **av)
       /* Create an HDF5 file access property list */
       fapl_id = H5Pcreate (H5P_FILE_ACCESS);
 
+      H5Pset_alignment(fapl_id, 1073741824, 8*1048576); 
+
       /* Set file access property list to use the MPI-IO file driver */
       ret = H5Pset_fapl_mpio(fapl_id, MPI_COMM_WORLD, MPI_INFO_NULL);
 
       /* Create the file collectively */
-#if 0
+#ifdef COLL_META
       H5Pset_coll_metadata_write(fapl_id, 1);
       H5Pset_all_coll_metadata_ops(fapl_id, 1 );
 #endif
@@ -376,9 +391,9 @@ int main(int ac, char **av)
     ret = H5Pset_fapl_mpio(fapl_id, MPI_COMM_WORLD, MPI_INFO_NULL);
 
     /* Create the file collectively */
-#if 0
+#ifdef COLL_META
     H5Pset_coll_metadata_write(fapl_id, 1);
-    H5Pset_all_coll_metadata_ops(fapl_id, 1 );
+    H5Pset_all_coll_metadata_ops(fapl_id, 1);
 #endif
     /* Read one variable at a time from the file */
     file_id = H5Fopen(filename, H5F_ACC_RDONLY, fapl_id);

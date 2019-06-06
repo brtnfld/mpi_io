@@ -1,7 +1,7 @@
 HDF5_DIR=$(HOME)/packages/hdf5/build/hdf5
 HOSTNAME:=$(shell hostname -d)
 
-DEF=""
+DEF=
 ifneq (,$(findstring summit,$(HOSTNAME)))
    DEF=-DSUMMIT
 endif
