@@ -36,6 +36,7 @@
 
 #define CHCK_VAL 0
 #define COLL_META 1
+#define PROC0_MPIIO 1
 #define PRINTID printf("Proc %d: ", mpi_rank)
 
 bool dequal(double a, double b, double epsilon)
@@ -185,14 +186,27 @@ int main(int ac, char **av)
       
         file_dims[0] = buf_size; ///num_vars/sizeof(double);
 
-
         fcpl_id = H5Pcreate(H5P_FILE_CREATE);
         //        H5Pset_file_space_strategy(fcpl_id, H5F_FSPACE_STRATEGY_FSM_AGGR, 1, (hsize_t)1);
 
+        /* Create an HDF5 file access property list */
+        fapl_id = H5Pcreate (H5P_FILE_ACCESS);
+
+        /* Set file access property list to use the MPI-IO file driver */
+        ret = H5Pset_fapl_mpio(fapl_id, MPI_COMM_SELF, MPI_INFO_NULL);
+
+        MPI_Comm comm_self;
+        MPI_Comm_split(MPI_COMM_WORLD, mpi_rank, 0, &comm_self);
+
+#ifdef PROC0_MPIIO
+        ret = H5Pset_fapl_mpio(fapl_id, comm_self, MPI_INFO_NULL);
+#endif
+
         /* Create the file */
-        file_id = H5Fcreate(filename, H5F_ACC_TRUNC, fcpl_id, H5P_DEFAULT);
+        file_id = H5Fcreate(filename, H5F_ACC_TRUNC, fcpl_id, fapl_id);
 
         H5Pclose(fcpl_id);
+        H5Pclose(fapl_id);
         
         if(strcmp(av[1],"-c")==0 || strcmp(av[1],"-t")==0) {
           for (i=0; i < num_vars; i++) {
@@ -227,6 +241,7 @@ int main(int ac, char **av)
           ret = H5Dclose(dset_id);
         }
         ret = H5Fclose(file_id);
+
       }
 
       MPI_Barrier(MPI_COMM_WORLD);
@@ -234,7 +249,7 @@ int main(int ac, char **av)
       /* Create an HDF5 file access property list */
       fapl_id = H5Pcreate (H5P_FILE_ACCESS);
 
-      H5Pset_alignment(fapl_id, 1073741824, 8*1048576); 
+      //H5Pset_alignment(fapl_id, 1073741824, 8*1048576); 
 
       /* Set file access property list to use the MPI-IO file driver */
       ret = H5Pset_fapl_mpio(fapl_id, MPI_COMM_WORLD, MPI_INFO_NULL);
