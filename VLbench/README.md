@@ -1,4 +1,4 @@
-##HDF5 VL Benchmark Program
+## HDF5 VL Benchmark Program
 
 *Purpose*
  
