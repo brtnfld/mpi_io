@@ -1,12 +1,10 @@
 /************************************************************
 
-  This example shows how to read and write variable-length
-  datatypes to a dataset.  The program first writes two
+  This benchmark if for reading and writing variable-length
+  datatypes to a dataset.  The program first writes
   variable-length integer arrays to a dataset then closes
-  the file.  Next, it reopens the file, reads back the data,
-  and outputs it to the screen.
-
-  This file is intended for use with HDF5 Library version 1.8
+  the file.  Next, it reopens the file, reads back the data, and
+  closes the file. The VL is random for each array element.
 
  ************************************************************/
 
