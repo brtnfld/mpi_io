@@ -1,4 +1,4 @@
-## HDF5 VL Benchmark Program
+## HDF5 VL Benchmarking Program
 
 *Purpose*
  
@@ -15,7 +15,6 @@
  size (-p) and the buffer size of the page (-b). See the options below.
 
  Compile the program using the h5cc wrapper.
-
 
 *OPTIONS*
 
