@@ -1,11 +1,12 @@
+
 /************************************************************
-
-  This benchmark if for reading and writing variable-length
-  datatypes to a dataset.  The program first writes
-  variable-length integer arrays to a dataset then closes
-  the file.  Next, it reopens the file, reads back the data, and
-  closes the file. The VL is random for each array element.
-
+ *
+ * This benchmark if for reading and writing variable-length
+ * datatypes to a dataset.  The program first writes
+ * variable-length integer arrays to a dataset then closes
+ * the file.  Next, it reopens the file, reads back the data, and
+ * closes the file. The VL is random for each array element.
+ *
  ************************************************************/
 
 #include "hdf5.h"
@@ -27,20 +28,23 @@ main (int argc, char *argv[] )
 {
     FILE * pFile;
 
-    hid_t       file, filetype, memtype, space, dset;
+    hid_t file, filetype, memtype, space, dset;
+    hid_t dcpl;
                                     /* Handles */
     herr_t      status;
     hsize_t     dims_r;
     int         *ptr;
-    hvl_t       *wdataVL,           /* Array of vlen structures */
-                *rdataVL;             /* Pointer to vlen structures */
+    hvl_t       *wdataVL,   /* Array of vlen structures */
+                *rdataVL;   /* Pointer to vlen structures */
     hsize_t     i, j;
     int opt;
     double w=0., r=0.;
+    double w_create=0., w_write=0., w_close=0.;
+    double r_open=0., r_read=0., r_close=0.;
     hsize_t DSsize;
-    hsize_t dims_w =1048576; //4096;
-    hsize_t VLmax = 1024; //4096;
-    struct timeval  tic, toc;
+    hsize_t dims_w =1048576;
+    hsize_t VLmax = 1024;
+    struct timeval  tic, toc, tic_fnc, toc_fnc;
     hsize_t vl_size;
     hid_t   plist_id, fcpl;
     int write=0, read=0;
@@ -48,6 +52,7 @@ main (int argc, char *argv[] )
     int fsm = 0;
     hsize_t fs_page_size = 4;
     size_t buf_page_size = 16;
+    char *timing_filename = "time_vlen_random.txt";
 
 
     while ((opt = getopt(argc, argv, "rwhs:f:p:b:n:v:")) != -1) {
@@ -79,7 +84,7 @@ main (int argc, char *argv[] )
           printf("   -n <int>     number of array elements [default = %lld]\n", dims_w);
           printf("   -v <int>     maximum variable length [default = %lld]\n", VLmax);
           printf("   -s <seed>    seed for random number generator [default = %d]\n", seed);
-          printf("   -f <int>     free space manager: \n");
+          printf("   -f <int>     specify a free space manager: \n");
           printf("                      0 - FSM, Aggregators [default] \n");
           printf("                      1 - Paged FSM\n");
           printf("                      2 - Aggregators (no FSM)\n");
@@ -91,11 +96,9 @@ main (int argc, char *argv[] )
           printf("   -h            help\n");
           return 0;
         case '?':
-          if ( (optopt == 's'))  //  | (optopt == 'f')
-            fprintf (stderr, "Option -%c requires an argument.\n", optopt);
-          return 1;
+          exit(EXIT_FAILURE);
         default:
-            fprintf(stderr, "Usage: %s [-rws]\n", argv[0]);
+            fprintf(stderr, "Usage: %s -h\n", argv[0]);
             exit(EXIT_FAILURE);
         }
     }
@@ -107,7 +110,11 @@ main (int argc, char *argv[] )
        printf("   buffer size of the page = %ld MiB \n", buf_page_size);
     }
 
-    if(write == 0 && read == 0) return 0;
+    if(write == 0 && read == 0){
+      printf("\nWARNING: No read or write options specified...exiting \n");
+      printf("         For help use: %s -h\n", argv[0]);
+      return 0;
+    }
 
     printf("\n %s (NROWS, MAX(VL)) = (%lld,%lld)\n\n", DATASET_VL, dims_w, VLmax);
 
@@ -168,20 +175,31 @@ main (int argc, char *argv[] )
 
       gettimeofday(&tic, NULL);
 
+      gettimeofday(&tic_fnc, NULL);
       file = H5Fcreate(FILENAME, H5F_ACC_TRUNC, fcpl, plist_id);
+      gettimeofday(&toc_fnc, NULL);
+      w_create = (double) (toc_fnc.tv_usec - tic_fnc.tv_usec) / 1000000 + (double) (toc_fnc.tv_sec - tic_fnc.tv_sec);
+
+      H5Pclose(plist_id);
+      H5Pclose(fcpl);
 
       filetype = H5Tvlen_create (H5T_NATIVE_INT);
       memtype = H5Tvlen_create (H5T_NATIVE_INT);
 
       space = H5Screate_simple (1, &dims_w, NULL);
 
-      dset = H5Dcreate (file, DATASET_VL, filetype, space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      dcpl = H5Pcreate(H5P_DATASET_CREATE);
+      dset = H5Dcreate (file, DATASET_VL, filetype, space, H5P_DEFAULT, dcpl, H5P_DEFAULT);
+      H5Pclose(dcpl);
 
+      gettimeofday(&tic_fnc, NULL);
       status = H5Dwrite (dset, memtype, H5S_ALL, H5S_ALL, H5P_DEFAULT, wdataVL);
       if(status != 0) {
         fprintf (stderr, "H5Dwrite Failed. \n");
         return status;
       }
+      gettimeofday(&toc_fnc, NULL);
+      w_write = (double) (toc_fnc.tv_usec - tic_fnc.tv_usec) / 1000000 + (double) (toc_fnc.tv_sec - tic_fnc.tv_sec);
 
       status = H5Dvlen_reclaim (memtype, space, H5P_DEFAULT, wdataVL);
 
@@ -190,13 +208,13 @@ main (int argc, char *argv[] )
       status = H5Tclose (filetype);
       status = H5Tclose (memtype);
 
+      gettimeofday(&tic_fnc, NULL);
       status = H5Fclose (file);
+      gettimeofday(&toc_fnc, NULL);
+      w_close = (double) (toc_fnc.tv_usec - tic_fnc.tv_usec) / 1000000 + (double) (toc_fnc.tv_sec - tic_fnc.tv_sec);
 
       gettimeofday(&toc, NULL);
       w = (double) (toc.tv_usec - tic.tv_usec) / 1000000 + (double) (toc.tv_sec - tic.tv_sec);
-
-      H5Pclose(plist_id);
-      H5Pclose(fcpl);
 
       free(wdataVL);
     }
@@ -210,10 +228,13 @@ main (int argc, char *argv[] )
 
       gettimeofday(&tic, NULL);
 
+      gettimeofday(&tic_fnc, NULL);
       if( (file = H5Fopen (FILENAME, H5F_ACC_RDONLY, plist_id)) < 0 ) {
         printf("error opening file: %s\n", FILENAME);
         return 1;
       }
+      gettimeofday(&toc_fnc, NULL);
+      r_open = (double) (toc_fnc.tv_usec - tic_fnc.tv_usec) / 1000000 + (double) (toc_fnc.tv_sec - tic_fnc.tv_sec);
 
       status = H5Pclose (plist_id);
       dset = H5Dopen (file, DATASET_VL, H5P_DEFAULT);
@@ -234,11 +255,15 @@ main (int argc, char *argv[] )
       /*
        * Read the data.
        */
+      
+      gettimeofday(&tic_fnc, NULL);
       status = H5Dread (dset, memtype, H5S_ALL, H5S_ALL, H5P_DEFAULT, rdataVL);
       if(status != 0) {
         fprintf (stderr, "H5Dread Failed. \n");
         return status;
       }
+      gettimeofday(&toc_fnc, NULL);
+      r_read = (double) (toc_fnc.tv_usec - tic_fnc.tv_usec) / 1000000 + (double) (toc_fnc.tv_sec - tic_fnc.tv_sec);
 
 #if DEBUG
       /*
@@ -262,7 +287,11 @@ main (int argc, char *argv[] )
       status = H5Sclose (space);
       status = H5Tclose (memtype);
 
+      
+      gettimeofday(&tic_fnc, NULL);
       status = H5Fclose (file);
+      gettimeofday(&toc_fnc, NULL);
+      r_close = (double) (toc_fnc.tv_usec - tic_fnc.tv_usec) / 1000000 + (double) (toc_fnc.tv_sec - tic_fnc.tv_sec);
 
       gettimeofday(&toc, NULL);
       r = r + (double) (toc.tv_usec - tic.tv_usec) / 1000000 + (double) (toc.tv_sec - tic.tv_sec);
@@ -277,14 +306,19 @@ main (int argc, char *argv[] )
 
     printf("Total time %lld MiB, %f s \n", DSsize,  w+r);
 
-    pFile = fopen ("time_VLrandom.txt", "a");
+    /* Save the timing data to a file, all times are in seconds:
+     * "write", Total write time, H5Fcreate time, H5Dwrite time, H5Fopen time
+     * "read", Total read time, H5Fopen time, H5Dwrite time, H5Fopen time
+     */
+
+    pFile = fopen (timing_filename, "w");
     if(write){
       printf(" -- Write -- Total %lld MiB, %f MiB/s \n",DSsize,DSsize/w);
-      fprintf(pFile, "%f ", w);
+      fprintf(pFile, "write %f %f %f %f \n", w, w_create, w_write, w_close);
     }
     if(read){
       printf(" -- Read  -- Total %lld MiB, %f MiB/s \n",DSsize,DSsize/r);
-      fprintf(pFile, "%f ", r);
+      fprintf(pFile, "read %f %f %f %f \n ", r, r_open, r_read, r_close);
     }
     fclose(pFile);
     return 0;
