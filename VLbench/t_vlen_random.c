@@ -22,7 +22,7 @@
 #define FILENAME        "t_vlen_rand.h5"
 #define DATASET_VL      "DSVL"
 #define MiB 1048576
-#define kiB 1024
+#define KiB 1024
 
 int
 main (int argc, char *argv[] )
