@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <sys/time.h>
+#include <getopt.h>
 #include <unistd.h>
 #include <stdbool.h>
 #include <sys/stat.h>
