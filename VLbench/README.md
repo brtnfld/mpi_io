@@ -31,9 +31,9 @@
                       2 - Aggregators (no FSM)
                       3 - (no FSM)
    -p <int>      paged buffering (-f 1) option:
-                      int - file space page size (in MiB)  [default = 4]
+                      int - file space page size (in KiB)  [default = 4]
    -b <int>      paged buffering (-f 1) option:
-                      int - buffer size of the page (in MiB) [default = 16]
+                      int - buffer size of the page (in MiB) [default = 4]
    -h            help
 
 ``` 

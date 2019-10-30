@@ -19,11 +19,12 @@
 #include <stdbool.h>
 #include <sys/stat.h>
 
-#define DEBUG 0
+#define DEBUG 1
 #define FILENAME        "h5ex_t_vlen.h5"
 #define DATASET_VL      "DSVL"
 #define DATASET         "DS"
 #define DATASET_INDX    "DS_INDX"
+
 //#define core 67108864
 
 int
@@ -43,8 +44,8 @@ main (int argc, char *argv[] )
     int opt, cnt=0;
     double w=0., r=0., r_vl=0.;
     hsize_t DSsize;
-    hsize_t NROWS =4096; //4096;
-    hsize_t NVL = 4096; //4096;
+    hsize_t NROWS =128; //4096;
+    hsize_t NVL = 64; //4096;
     struct timeval  tic, toc;
     hid_t   plist_id, fcpl;
     int write=0,read=0;
@@ -52,11 +53,8 @@ main (int argc, char *argv[] )
 
     hsize_t nelm;
     hsize_t nelm_indx = 0;
-    hsize_t maxdims[1];
-    
-    bool vlvl = true;
 
-    while ((opt = getopt(argc, argv, "rwv")) != -1) {
+    while ((opt = getopt(argc, argv, "rw")) != -1) {
         cnt=cnt+1;
         switch (opt) {
         case 'r': read = 1; break;
@@ -72,14 +70,10 @@ main (int argc, char *argv[] )
     }
 
     /*
-     * Initialize variable-length data.  wdataVL[0] is a countdown of
-     * length NVL
+     * Initialize variable-length data.
      */
-    maxdims[0] = H5S_UNLIMITED;
 
-    dims[0] = NROWS;
-    if(vlvl)
-      dims[0] = 2*NROWS;
+    dims[0] = 2*NROWS;
 
     nelm = NROWS*NVL;
 
@@ -137,9 +131,11 @@ main (int argc, char *argv[] )
 	} else {
 	  dims2D = dims2D + k;
 	}
-	//	printf("%lld %lld %lld\n", nelm_indx, nvl_len[j], dims2D);
+        // printf("%lld %lld\n", nelm_indx, dims2D);
       }
-      
+
+      //  wdataVL[0] is a countdown of length NVL
+
       if( !(wdataVL = malloc (nelm_indx * sizeof (hvl_t)) ) ) {
 	printf("malloc nvl_len failed \n");
 	abort();
@@ -168,7 +164,7 @@ main (int argc, char *argv[] )
 	  dims2D = dims2D + k;
 	  wdataVL[j].len = k;
 	}
-	//	printf("%lld %lld %lld\n", nelm_indx, nvl_len[j], dims2D);
+        //  printf("%lld %lld %lld\n", nelm_indx, wdataVL[j].len, dims2D);
       }
 
       // printf("%lld %lld \n", nelm_indx, dims[0]);
@@ -198,7 +194,7 @@ main (int argc, char *argv[] )
       filetype = H5Tvlen_create (H5T_STD_I32LE);
       memtype = H5Tvlen_create (H5T_NATIVE_INT);
 
-      space = H5Screate_simple (1, &nelm_indx, maxdims);
+      space = H5Screate_simple (1, &nelm_indx, NULL);
 
       dset   = H5Dcreate (file, DATASET_VL, filetype, space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
@@ -263,7 +259,7 @@ main (int argc, char *argv[] )
        * Output the variable-length data to the screen.
        */
       for (i=0; i<dims2D; i++) {
-        printf ("%s[%lld]:\n  {",DATASET_VL,i);
+        printf ("%s[%lld]: {",DATASET_VL,i);
         ptr = rdataVL[i].p;
         for (j=0; j<rdataVL[i].len; j++) {
 	  printf (" %d", ptr[j]);

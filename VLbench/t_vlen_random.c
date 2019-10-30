@@ -22,6 +22,7 @@
 #define FILENAME        "t_vlen_rand.h5"
 #define DATASET_VL      "DSVL"
 #define MiB 1048576
+#define kiB 1024
 
 int
 main (int argc, char *argv[] )
@@ -51,7 +52,7 @@ main (int argc, char *argv[] )
     unsigned seed = 5;
     int fsm = 0;
     hsize_t fs_page_size = 4;
-    size_t buf_page_size = 16;
+    size_t buf_page_size = 4;
     char *timing_filename = "time_vlen_random.txt";
 
 
@@ -90,7 +91,7 @@ main (int argc, char *argv[] )
           printf("                      2 - Aggregators (no FSM)\n");
           printf("                      3 - (no FSM)\n");
           printf("   -p <int>      paged buffering (-f 1) option: \n");
-          printf("                      int - file space page size (in MiB)  [default = %lld] \n", fs_page_size);
+          printf("                      int - file space page size (in KiB)  [default = %lld] \n", fs_page_size);
           printf("   -b <int>      paged buffering (-f 1) option: \n");
           printf("                      int - buffer size of the page (in MiB) [default = %ld] \n", buf_page_size);
           printf("   -h            help\n");
@@ -106,7 +107,7 @@ main (int argc, char *argv[] )
            write, read, dims_w, VLmax, seed, fsm);
 
     if(fsm == 1) {
-       printf("  file space page size = %lld MiB \n", fs_page_size);
+       printf("  file space page size = %lld KiB \n", fs_page_size);
        printf("   buffer size of the page = %ld MiB \n", buf_page_size);
     }
 
@@ -147,7 +148,7 @@ main (int argc, char *argv[] )
       H5Pset_file_space_strategy(fcpl, fsm, 0, (hsize_t)1);
 
       if(fsm == 1) {
-        H5Pset_file_space_page_size(fcpl, fs_page_size*(hsize_t)MiB);
+        H5Pset_file_space_page_size(fcpl, fs_page_size*(hsize_t)KiB);
         H5Pset_page_buffer_size(plist_id, (size_t)(buf_page_size*(hsize_t)MiB), 0, 0);
       }
 
