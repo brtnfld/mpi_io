@@ -146,12 +146,15 @@ main (int argc, char *argv[] )
        *     } H5F_fspace_strategy_t; 
        */
 
+      /* H5_VERSION_GE is for versions > 1.8.6 */
+#if H5_VERSION_GE(1,10,1)
       H5Pset_file_space_strategy(fcpl, fsm, 0, (hsize_t)1);
 
       if(fsm == 1) {
         H5Pset_file_space_page_size(fcpl, fs_page_size*(hsize_t)KiB);
         H5Pset_page_buffer_size(plist_id, (size_t)(buf_page_size*(hsize_t)MiB), 0, 0);
       }
+#endif
 
       vl_size = 0;
       for (j=0; j < dims_w; j++) {
