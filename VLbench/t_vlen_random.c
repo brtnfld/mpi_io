@@ -18,6 +18,7 @@
 #include <unistd.h>
 #include <stdbool.h>
 #include <sys/stat.h>
+#include <string.h>
 
 #define DEBUG 0
 #define FILENAME        "t_vlen_rand.h5"
@@ -54,8 +55,10 @@ main (int argc, char *argv[] )
     int fsm = 0;
     hsize_t fs_page_size = 4;
     size_t buf_page_size = 4;
-    char *timing_filename = "time_vlen_random.txt";
+    char prefix[180];
+    char filename_timing[180]="";
 
+    strcpy(prefix,"t_vlen-");
 
     while ((opt = getopt(argc, argv, "rwhs:f:p:b:n:v:")) != -1) {
         switch (opt) {
@@ -66,6 +69,9 @@ main (int argc, char *argv[] )
           break;
         case 'n':
           dims_w = atoi(optarg);
+          break;
+        case 'o':
+          strcpy(prefix,optarg);
           break;
         case 'v':
           VLmax = atoi(optarg);
@@ -146,10 +152,9 @@ main (int argc, char *argv[] )
        *     } H5F_fspace_strategy_t; 
        */
 
-      /* H5_VERSION_GE is for versions > 1.8.6 */
-#if H5_VERSION_GE(1,10,1)
+      /* FSM introduced in  1.10.1 */
+#if H5_VERS_MINOR == 10 && H5_VERS_RELEASE >= 1
       H5Pset_file_space_strategy(fcpl, fsm, 0, (hsize_t)1);
-
       if(fsm == 1) {
         H5Pset_file_space_page_size(fcpl, fs_page_size*(hsize_t)KiB);
         H5Pset_page_buffer_size(plist_id, (size_t)(buf_page_size*(hsize_t)MiB), 0, 0);
@@ -315,8 +320,13 @@ main (int argc, char *argv[] )
      * "write", Total write time, H5Fcreate time, H5Dwrite time, H5Fopen time
      * "read", Total read time, H5Fopen time, H5Dwrite time, H5Fopen time
      */
+    unsigned majnum=0, minnum=0, relnum=0;
+    H5get_libversion( &majnum, &minnum, &relnum );
+    
+    snprintf(filename_timing, sizeof(filename_timing), "%s%d.%d.%d_%d",prefix,majnum, minnum, relnum, dims_w);
 
-    pFile = fopen (timing_filename, "w");
+    pFile = fopen (filename_timing, "w");
+
     if(write){
       printf(" -- Write -- Total %lld MiB, %f MiB/s \n",DSsize,DSsize/w);
       fprintf(pFile, "write %f %f %f %f \n", w, w_create, w_write, w_close);
@@ -327,5 +337,4 @@ main (int argc, char *argv[] )
     }
     fclose(pFile);
     return 0;
-
 }
