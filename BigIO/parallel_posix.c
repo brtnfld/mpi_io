@@ -52,9 +52,9 @@ int main(int argc, char *argv[] ) {
   rc = MPI_File_open( MPI_COMM_WORLD, "datafile", MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fdp);
 
   offset = 0;
-  N = 1024*1024*1024;
-  GB = 1;
-  bufsize = N/nprocs;
+  N = 1024*1024*1024/sizeof(int);
+  GB = 2; /* SIZE OF FILE, GB */
+  bufsize = GB*N/nprocs;
 
   raw(fdp, myid, nprocs, bufsize, offset);  
 

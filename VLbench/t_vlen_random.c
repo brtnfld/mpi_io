@@ -327,14 +327,18 @@ main (int argc, char *argv[] )
 
     pFile = fopen (filename_timing, "w");
 
+
     if(write){
       printf(" -- Write -- Total %lld MiB, %f MiB/s \n",DSsize,DSsize/w);
-      fprintf(pFile, "write %f %f %f %f \n", w, w_create, w_write, w_close);
     }
     if(read){
       printf(" -- Read  -- Total %lld MiB, %f MiB/s \n",DSsize,DSsize/r);
-      fprintf(pFile, "read %f %f %f %f \n ", r, r_open, r_read, r_close);
     }
+
+    fprintf(pFile, "%d.%d.%d ", majnum, minnum, relnum);
+    fprintf(pFile, "%f %f %f %f ", w, w_create, w_write, w_close);
+    fprintf(pFile, "%f %f %f %f \n", r, r_open, r_read, r_close);
+
     fclose(pFile);
     return 0;
 }

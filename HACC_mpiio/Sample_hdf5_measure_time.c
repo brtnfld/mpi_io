@@ -59,17 +59,18 @@ int main(int ac, char **av)
     /* buffer size is the total size for one variable. */
     /* The buffer size will be 8 GB, 72 GB total (9* 1073741824*8/(1024*1024*1024)). */
 #ifdef SUMMIT // Summit (multiples of 42)
-    int64_t buf_size = 1213857792LL;
+    //    int64_t buf_size = 1213857792LL;
 #else // (multiples of 32)
-    int64_t buf_size = 17179869184LL;
+    //    int64_t buf_size = 17179869184LL;
 #endif    
     //For debugging uncomment the following line
-    // int64_t  buf_size = 1024LL;
-    //int64_t buf_size = 4194304;
+    int64_t  buf_size = 1024LL;
+    //    int64_t buf_size = 4194304;
     
     /* Number of variables, currently is 9 like Generic IO. */
     int num_vars  = 9;
     int rest_num =0;
+    int multi_dset =0;
     MPI_Offset  mpi_off = 0;
     MPI_Status  mpi_stat;
     double *writedata;
@@ -88,9 +89,13 @@ int main(int ac, char **av)
 
     // HDF5
     hid_t file_id;              /* File ID */
+    hid_t file_id_v[num_vars];              /* File ID */
+    hid_t type_id_v[num_vars];
     hid_t fapl_id, fcpl_id;		/* File access property list */
     hid_t dset_id;		/* Dataset ID */
+    hid_t dset_id_v[num_vars];		/* Dataset ID */
     hid_t file_space_id;	/* File dataspace ID */
+    hid_t file_space_id_v[num_vars];	/* File dataspace ID */
     hid_t mem_space_id;		/* Memory dataspace ID */
     hsize_t file_dims[RANK];   	/* Dataset dimemsion sizes */
     hsize_t mem_dims[1];   	/* Memory buffer dimemsion sizes */
@@ -103,7 +108,9 @@ int main(int ac, char **av)
     size_t ii;
     int hdf5=1;
 
-    const char * DATASETNAME[] = {
+    const char *DATASETNAME[num_vars];
+#if 0
+ = {
       "id",
       "mask",
       "x",
@@ -114,6 +121,7 @@ int main(int ac, char **av)
       "vz",
       "phi"
     };
+#endif
 
     typedef struct {
       double id;
@@ -133,13 +141,15 @@ int main(int ac, char **av)
     struct stat st;
     off_t size;
     hid_t dcpl;
+    hid_t dcpl_v[num_vars];
+    H5D_alloc_multi_method_t method;    /* Method to use when allocating file space for the datasets */
 
     MPI_Init(&ac, &av);
     MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
 
     if (ac==1){
-      if (mpi_rank==0) printf("REQUIRES INPUT ARGUMENT -c or -i \n");
+      if (mpi_rank==0) printf("REQUIRES INPUT ARGUMENT -c, -i, or -m \n");
       MPI_Abort(MPI_COMM_WORLD, 1);
     }
 
@@ -155,56 +165,71 @@ int main(int ac, char **av)
       num_vars=1;
     }
 
+    // Allocate total amount of data per process to the buffer
+    mem_dims[0] = buf_size_per_proc; // /num_vars/mpi_size/sizeof(double);
 
     if(hdf5) {
-
-      if(strcmp(av[1],"-i")==0) {
-
-          Hmemtype = H5Tcreate (H5T_COMPOUND, sizeof (hacc_t));
-          H5Tinsert (Hmemtype, "id",
-                     HOFFSET (hacc_t, id), H5T_NATIVE_DOUBLE);
-          H5Tinsert (Hmemtype, "mask", 
-                     HOFFSET (hacc_t, mask), H5T_NATIVE_DOUBLE);
-          H5Tinsert (Hmemtype, "x",
-                     HOFFSET (hacc_t, x), H5T_NATIVE_DOUBLE);
-          H5Tinsert (Hmemtype, "y",
-                     HOFFSET (hacc_t, y), H5T_NATIVE_DOUBLE);
-          H5Tinsert (Hmemtype, "z",
-                     HOFFSET (hacc_t, z), H5T_NATIVE_DOUBLE);
-          H5Tinsert (Hmemtype, "vx",
-                     HOFFSET (hacc_t, vx), H5T_NATIVE_DOUBLE);
-          H5Tinsert (Hmemtype, "vy",
-                     HOFFSET (hacc_t, vy), H5T_NATIVE_DOUBLE);
-          H5Tinsert (Hmemtype, "vz",
-                     HOFFSET (hacc_t, vz), H5T_NATIVE_DOUBLE);
-          H5Tinsert (Hmemtype, "phi",
-                     HOFFSET (hacc_t, phi), H5T_NATIVE_DOUBLE);
-
-      }
-
-      if( mpi_rank == 0) {
       
-        file_dims[0] = buf_size; ///num_vars/sizeof(double);
-
+      if(strcmp(av[1],"-i")==0) {
+        
+        Hmemtype = H5Tcreate (H5T_COMPOUND, sizeof (hacc_t));
+        H5Tinsert (Hmemtype, "id",
+                   HOFFSET (hacc_t, id), H5T_NATIVE_DOUBLE);
+        H5Tinsert (Hmemtype, "mask", 
+                   HOFFSET (hacc_t, mask), H5T_NATIVE_DOUBLE);
+        H5Tinsert (Hmemtype, "x",
+                   HOFFSET (hacc_t, x), H5T_NATIVE_DOUBLE);
+        H5Tinsert (Hmemtype, "y",
+                   HOFFSET (hacc_t, y), H5T_NATIVE_DOUBLE);
+        H5Tinsert (Hmemtype, "z",
+                   HOFFSET (hacc_t, z), H5T_NATIVE_DOUBLE);
+        H5Tinsert (Hmemtype, "vx",
+                   HOFFSET (hacc_t, vx), H5T_NATIVE_DOUBLE);
+        H5Tinsert (Hmemtype, "vy",
+                   HOFFSET (hacc_t, vy), H5T_NATIVE_DOUBLE);
+        H5Tinsert (Hmemtype, "vz",
+                   HOFFSET (hacc_t, vz), H5T_NATIVE_DOUBLE);
+        H5Tinsert (Hmemtype, "phi",
+                   HOFFSET (hacc_t, phi), H5T_NATIVE_DOUBLE);
+      } else if (strcmp(av[1],"-m")==0) {
+        multi_dset = 1;
+        
+      }
+      MPI_Comm comm_self;
+      MPI_Comm_split(MPI_COMM_WORLD, mpi_rank, 0, &comm_self);
+      
+      DATASETNAME[0] = "id";
+      DATASETNAME[1] = "mask";
+      DATASETNAME[2] = "x";
+      DATASETNAME[3] = "y";
+      DATASETNAME[4] = "z";
+      DATASETNAME[5] = "vx";
+      DATASETNAME[6] = "vy";
+      DATASETNAME[7] = "vz";
+      DATASETNAME[8] = "phi";
+      
+      if( mpi_rank == 0) {
+        
+        file_dims[0] = buf_size; /*num_vars/sizeof(double);*/
+        
         fcpl_id = H5Pcreate(H5P_FILE_CREATE);
-        //        H5Pset_file_space_strategy(fcpl_id, H5F_FSPACE_STRATEGY_FSM_AGGR, 1, (hsize_t)1);
-
+        /* H5Pset_file_space_strategy(fcpl_id, H5F_FSPACE_STRATEGY_FSM_AGGR, 1, (hsize_t)1); */
+        
         /* Create an HDF5 file access property list */
-        fapl_id = H5Pcreate (H5P_FILE_ACCESS);
-
+        fapl_id = H5Pcreate (H5P_FILE_ACCESS); 
+        
+        /* Set to use latest format */
+        H5Pset_libver_bounds(fapl_id, H5F_LIBVER_LATEST, H5F_LIBVER_LATEST);
+        
         /* Set file access property list to use the MPI-IO file driver */
         ret = H5Pset_fapl_mpio(fapl_id, MPI_COMM_SELF, MPI_INFO_NULL);
-
-        MPI_Comm comm_self;
-        MPI_Comm_split(MPI_COMM_WORLD, mpi_rank, 0, &comm_self);
-
+        
 #ifdef PROC0_MPIIO
         ret = H5Pset_fapl_mpio(fapl_id, comm_self, MPI_INFO_NULL);
 #endif
-
         /* Create the file */
         file_id = H5Fcreate(filename, H5F_ACC_TRUNC, fcpl_id, fapl_id);
-
+        
         H5Pclose(fcpl_id);
         H5Pclose(fapl_id);
         
@@ -212,7 +237,7 @@ int main(int ac, char **av)
           for (i=0; i < num_vars; i++) {
             
             file_space_id = H5Screate_simple(1, file_dims, NULL);
-
+            
             dcpl = H5Pcreate(H5P_DATASET_CREATE);
             H5Pset_alloc_time(dcpl, H5D_ALLOC_TIME_EARLY);
             H5Pset_fill_time(dcpl, H5D_FILL_TIME_NEVER);
@@ -220,30 +245,59 @@ int main(int ac, char **av)
             /* Create the dataset collectively */
             dset_id = H5Dcreate2(file_id, DATASETNAME[i], H5T_NATIVE_DOUBLE,
                                  file_space_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-
+            
             ret = H5Sclose(file_space_id);
             ret = H5Pclose(dcpl);
             ret = H5Dclose(dset_id);
           }
-        } else {
-
-          file_space_id = H5Screate_simple(1, file_dims, NULL);
+        } else if( strcmp(av[1],"-m")==0 ) {
+          
+          for (i=0; i < num_vars; i++) {
             
+            file_space_id_v[i] = H5Screate_simple(1, file_dims, NULL);
+            
+            dcpl_v[i] = H5Pcreate(H5P_DATASET_CREATE);
+            H5Pset_chunk(dcpl_v[i], 1, mem_dims);
+            
+            /* Enable H5D_ALLOC_TIME_MULTI in dataset creation property lists for the multi-dataset */
+            H5Pset_alloc_time(dcpl_v[i], H5D_ALLOC_TIME_MULTI);
+            //   H5Pset_fill_time(dcpl_v[i], H5D_FILL_TIME_NEVER);
+            
+            file_id_v[i] = file_id;
+            type_id_v[i] = H5T_NATIVE_DOUBLE;
+            
+          }
+
+          /* Set method to use when allocating file space for the multi-datasets */
+          method =  H5D_ALLOC_MULTI_ROUND_ROBIN;
+
+          /* Create the dataset collectively */
+          ret = H5Dcreate_multi(9, file_id_v, DATASETNAME, type_id_v,
+                                file_space_id_v, H5P_DEFAULT, dcpl_v, H5P_DEFAULT, method, NULL, dset_id_v);
+          for (i=0; i < num_vars; i++) {  
+            ret = H5Sclose(file_space_id_v[i]);
+            ret = H5Pclose(dcpl_v[i]);
+            ret = H5Dclose(dset_id_v[i]);
+          }
+        } else {
+          
+          file_space_id = H5Screate_simple(1, file_dims, NULL);
+          
           dcpl = H5Pcreate(H5P_DATASET_CREATE);
           H5Pset_alloc_time(dcpl, H5D_ALLOC_TIME_EARLY);
           H5Pset_fill_time(dcpl, H5D_FILL_TIME_NEVER);
-            /* Create the dataset collectively */
+          /* Create the dataset collectively */
           dset_id = H5Dcreate2(file_id, "ALLVAR", Hmemtype,
-                                 file_space_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-
+                               file_space_id, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+          
           ret = H5Sclose(file_space_id);
           ret = H5Pclose(dcpl);
           ret = H5Dclose(dset_id);
         }
         ret = H5Fclose(file_id);
-
+        
       }
-
+      
       MPI_Barrier(MPI_COMM_WORLD);
       
       /* Create an HDF5 file access property list */
@@ -266,7 +320,7 @@ int main(int ac, char **av)
 
     }
     else {
-
+      
       if ((mpi_err = MPI_File_open(MPI_COMM_WORLD, filename,
                                    MPI_MODE_RDWR | MPI_MODE_CREATE ,
                                    MPI_INFO_NULL, &fh))
@@ -276,12 +330,10 @@ int main(int ac, char **av)
         printf("MPI_File_open failed (%s)\n", mpi_err_str);
         MPI_Abort(MPI_COMM_WORLD, 1);
       }
-
+      
     }
 
-    // Allocate total amount of data per process to the buffer
-    mem_dims[0] = buf_size_per_proc; // /num_vars/mpi_size/sizeof(double);
-    
+#if 1   
     if(strcmp(av[1],"-i")==0) {
       
       Hdata = (hacc_t *) malloc ( mem_dims[0] * sizeof (hacc_t));
@@ -307,7 +359,7 @@ int main(int ac, char **av)
 
     /* each process writes some data */
     total_time = 0.;
-    if(strcmp(av[1],"-c") ==0 || strcmp(av[1],"-t") ==0) {
+    if(strcmp(av[1],"-c") ==0 || strcmp(av[1],"-t") ==0 || strcmp(av[1],"-m") ==0) {
       if(mpi_rank == 0) 
         printf("coming to contiguous pattern\n");
       
@@ -379,7 +431,8 @@ int main(int ac, char **av)
     /* Close file dataspace */
     ret = H5Sclose(file_space_id);
     ret = H5Fclose(file_id);
-
+#endif
+#if 1
     if(mpi_rank == 0) {
       stat(filename, &st);
       size = st.st_size;
@@ -416,7 +469,7 @@ int main(int ac, char **av)
     
     readdata = malloc(buf_size_per_proc*sizeof(double)*num_vars);
     
-    if(strcmp(av[1],"-c")==0 || (strcmp(av[1],"-t")==0)) {
+    if(strcmp(av[1],"-c")==0 || (strcmp(av[1],"-t")==0) || (strcmp(av[1],"-m")==0) ) {
   
       for (i=0; i < num_vars; i++) {                 
 
@@ -520,6 +573,8 @@ int main(int ac, char **av)
       
     }
    
+#endif
+
     MPI_Reduce(&total_time, &Max_total_time, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     MPI_Reduce(&total_time, &Sum_total_time, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
     MPI_Reduce(&total_time, &Min_total_time, 1, MPI_DOUBLE, MPI_MIN, 0, MPI_COMM_WORLD);
