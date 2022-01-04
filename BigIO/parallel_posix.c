@@ -37,6 +37,8 @@ int main(int argc, char *argv[] ) {
   MPI_File fdp;
   MPI_Offset offset;
   int bufsize;
+  //  ADIOI_FileD *ptr;
+  char name[20];
 
   // Initialize the MPI environment
   MPI_Init(NULL, NULL);
@@ -51,14 +53,15 @@ int main(int argc, char *argv[] ) {
 
   rc = MPI_File_open( MPI_COMM_WORLD, "datafile", MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fdp);
 
-  offset = 0;
-  N = 1024*1024*1024/sizeof(int);
-  GB = 2; /* SIZE OF FILE, GB */
-  bufsize = GB*N/nprocs;
+  //  ptr = &fdp;
+  
+  //  printf("%s\n", &ptr.filename);
 
-  raw(fdp, myid, nprocs, bufsize, offset);  
-
-  MPI_File_close( &fdp );
+  int mpi_code;
+  mpi_code = MPI_File_close( &fdp );
+  printf("%d\n",mpi_code);
+  if(MPI_SUCCESS != (mpi_code = MPI_File_close( &fdp )))
+    printf("FAILED %d\n",mpi_code);
 
   MPI_Barrier(MPI_COMM_WORLD);
 
