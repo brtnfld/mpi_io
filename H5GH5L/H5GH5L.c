@@ -112,7 +112,7 @@ main (int argc, char **argv)
       t1 = MPI_Wtime();
       
       for (i=0; i < ngroups; i++) {
-        sprintf(buffer, "%s%02d", "link01/link02/link03/link004/",i);
+        sprintf(buffer, "%s%02d", "link01/link02/link03/link04/",i);
         gid = H5Gopen2(file_id, buffer, H5P_DEFAULT);
         if( gid > 0) {
           H5Gclose(gid);
@@ -129,10 +129,12 @@ main (int argc, char **argv)
 
       t1 = MPI_Wtime();
       for (i=0; i < ngroups; i++) {
-        sprintf(buffer, "%s%02d", "link01/link02/link03/link004/",i);
+        sprintf(buffer, "%s%02d", "link01/link02/link03/link04/",i);
         exists = H5Lexists(file_id, buffer, H5P_DEFAULT);
-        if( exists > 0) {
-          printf("exists\n"); 
+        if( exists > 0 ) {
+            gid = H5Gopen2(file_id, buffer, H5P_DEFAULT);
+            if( gid > 0)
+              H5Gclose(gid);
         }
       }
       t2 = MPI_Wtime() - t1;
