@@ -1,8 +1,9 @@
+SRC=$(wildcard *.c)
+BIN=$(SRC:.c=)
+
 CC = h5pcc
 
-SRC = H5GH5L.c 
-
-all: H5GH5L 
+all: $(BIN)
 
 H5GH5L: $(SRC)
 	$(CC) $(SRC) -o $@
@@ -13,5 +14,5 @@ H5GH5L: $(SRC)
 	$(CC) $(CFLAGS) -c  $< -o $@
 
 clean:
-	rm -f  *.o H5GH5L *.h5 
+	rm -f  *.o $(BIN) *.h5 
 
