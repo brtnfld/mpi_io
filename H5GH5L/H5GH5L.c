@@ -128,6 +128,7 @@ main (int argc, char **argv)
       file_id = H5Fopen(H5FILE_NAME, H5F_ACC_RDWR, plist_id);
 
       t1 = MPI_Wtime();
+#if 0
       for (i=0; i < ngroups; i++) {
         sprintf(buffer, "%s%02d", "link01/link02/link03/link04/",i);
         exists = H5Lexists(file_id, buffer, H5P_DEFAULT);
@@ -135,6 +136,23 @@ main (int argc, char **argv)
             gid = H5Gopen2(file_id, buffer, H5P_DEFAULT);
             if( gid > 0)
               H5Gclose(gid);
+        }
+      }
+#endif
+      for (i=0; i < ngroups; i++) {
+        sprintf(buffer, "%s%02d", "link01/link02/link03/link04/",i);
+        H5O_info_t oinfo;
+        oinfo.type = H5O_TYPE_UNKNOWN;
+
+#if H5_VERSION_GE(1,12,0)
+        status = H5Oget_info_by_name3(file_id, buffer, &oinfo, H5O_INFO_BASIC, H5P_DEFAULT);
+#else
+        status = H5Oget_info_by_name(file_id, buffer, &oinfo, H5P_DEFAULT);
+#endif
+        if(oinfo.type == H5O_TYPE_GROUP ) {
+          gid = H5Gopen2(file_id, buffer, H5P_DEFAULT);
+          if( gid > 0)
+            H5Gclose(gid);
         }
       }
       t2 = MPI_Wtime() - t1;
