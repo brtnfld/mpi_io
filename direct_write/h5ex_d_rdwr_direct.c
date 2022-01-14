@@ -78,7 +78,6 @@ main (void)
      * Open file and dataset using the default properties.
      */
 
-
     int fd;
     fd=open(FILE, O_WRONLY);
 
@@ -86,12 +85,34 @@ main (void)
 
     clock_t t;
     t = clock();
-    pwrite(fd, wdata, nbytes, offset);
+    ssize_t nb = pwrite(fd, wdata, nbytes, offset);
     t = clock() - t;
+
+    if(nb < 0){
+      perror("[error in write]\n");
+    } else if (nb == 0) {
+      perror("[nothing written ]\n");
+    } else if (nb != nbytes) {
+      perror("[nbytes written wrong ]\n");
+    }
+      
     double time_taken = ((double)t)/CLOCKS_PER_SEC; // in seconds
-    printf("pwrite took %f seconds to execute \n", time_taken);
+    printf("pwrite took %f s \n", time_taken);
 
     close(fd);
+
+    file = H5Fopen (FILE, H5F_ACC_RDWR, H5P_DEFAULT);
+    dset = H5Dopen (file, DATASET, H5P_DEFAULT);
+    t = clock();
+    status = H5Dwrite (dset, H5T_NATIVE_INT, H5S_ALL, H5S_ALL, H5P_DEFAULT, wdata[0]);
+    t = clock() - t;
+
+    time_taken = ((double)t)/CLOCKS_PER_SEC; // in seconds
+    printf("H5Dwrite took %f s \n", time_taken);
+
+    status = H5Dclose (dset);
+    status = H5Fclose (file);
+
 
     /*
      * Now we begin the read section of this example.
