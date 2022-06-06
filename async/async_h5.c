@@ -7,12 +7,16 @@
 #include "stdlib.h"
 #include <unistd.h>
 #include <math.h>
+#include "mpi.h"
+#include <pthread.h>
 
 #define H5FILE_NAME     "SDS_row.h5"
 #define DATASETNAME     "IntArray" 
-#define NX     2048                      /* dataset dimensions */
-#define NY     4 
+#define NX     28388608                      /* dataset dimensions */
+#define NY     1024 
 #define RANK   2
+
+hid_t es_id_g;
 
 static int PImpi(int pe, int processes, unsigned int intervals) {
 
@@ -33,13 +37,27 @@ static int PImpi(int pe, int processes, unsigned int intervals) {
 
     double time2 = MPI_Wtime();
 
-    if (pe == 1) {
+    if (pe == 0) {
         total = total * 4;
         printf("Result:   %.10lf\n", total);
         printf("Time:     %.10lf\n", time2 - time1);
     }
-
     return 0;
+}
+
+void *my_progress_func(void *args)
+{
+   size_t num_in_progress;
+   hbool_t op_failed;
+   int done = 0;
+#if 0
+   H5ESwait(es_id_g, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
+#else
+   while (!done) {
+       H5ESwait(es_id_g, 100, &num_in_progress, &op_failed);
+       if(num_in_progress == 0) done = 1;
+   }
+#endif
 }
 
 int
@@ -57,6 +75,7 @@ main (int argc, char **argv)
     hid_t       plist_id;                 /* property list identifier */
     int         i;
     herr_t      status;
+    pthread_t my_progress_thread;
 
     /*
      * MPI variables
@@ -65,7 +84,7 @@ main (int argc, char **argv)
     MPI_Comm comm  = MPI_COMM_WORLD;
     MPI_Info info  = MPI_INFO_NULL;
 
-    hid_t es_id_g;
+   // hid_t es_id_g;
     size_t num_in_progress;
     hbool_t op_failed;
 
@@ -75,7 +94,7 @@ main (int argc, char **argv)
     MPI_Init(&argc, &argv);
     MPI_Comm_size(comm, &mpi_size);
     MPI_Comm_rank(comm, &mpi_rank);  
- 
+    
     /* 
      * Set up file access property list with parallel I/O access
      */
@@ -88,7 +107,6 @@ main (int argc, char **argv)
      file_id = H5Fcreate(H5FILE_NAME, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id);
      H5Pclose(plist_id);
    
-
      es_id_g = H5EScreate();
      
     /*
@@ -142,55 +160,42 @@ main (int argc, char **argv)
     
     status = H5Dwrite_async(dset_id, H5T_NATIVE_INT, memspace, filespace,
                       plist_id, data, es_id_g);
-
     /*
      * Close/release resources.
      */
 #if 0
     H5Dclose_async(dset_id, es_id_g);
 #endif
+   
+   pthread_create(&my_progress_thread, NULL, my_progress_func, NULL);
 
-    if(mpi_rank == 0) {
-      H5ESwait(es_id_g, 10E9, &num_in_progress, &op_failed);
-    } else {
-      PImpi(mpi_rank, mpi_size-1, 1E9);
-    }
-
-    double time1 = MPI_Wtime();
-    H5ESwait(es_id_g, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
-    MPI_Barrier(MPI_COMM_WORLD);
-    double time2 = MPI_Wtime();
-    printf("H5ESwait Time:     %.10lf\n", time2 - time1);
-
-#if 0
-    H5ESwait(es_id_g, 0, &num_in_progress, &op_failed);
-    printf("Before compute phase %ld \n", num_in_progress);
-    MPI_Barrier(MPI_COMM_WORLD);
-    PImpi(mpi_rank, mpi_size, 1E9);
-    H5ESwait(es_id_g, 1E8, &num_in_progress, &op_failed);
-    MPI_Barrier(MPI_COMM_WORLD);
-    printf("After compute phase %ld \n", num_in_progress);
-    PImpi(mpi_rank, mpi_size, 1E9);
-    H5ESget_count(es_id_g, &num_in_progress);
-    printf("BB %ld \n", num_in_progress);
-    MPI_Barrier(MPI_COMM_WORLD);
-    double time1 = MPI_Wtime();
-    H5ESwait(es_id_g, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
-    MPI_Barrier(MPI_COMM_WORLD);
-    double time2 = MPI_Wtime();
-    printf("H5ESwait Time:     %.10lf\n", time2 - time1);
-#endif
-
+   // Compute Phase
+   double mpiio_stime = MPI_Wtime();
+   for (i=0; i < 2; i++) {
+      PImpi(mpi_rank, mpi_size, 1E9);
+   } 
+   double mpiio_etime = MPI_Wtime();
+   double total_time = mpiio_etime - mpiio_stime;
+   if(mpi_rank == 1) {
+     printf("Compute time %f seconds. \n", total_time);
+   }
     
+    pthread_join(my_progress_thread, NULL);
+    H5ESwait(es_id_g, 0, &num_in_progress, &op_failed);
+    printf("H5ESwait (0) %ld \n", num_in_progress);
 
-    printf("C %ld \n", num_in_progress);
+    double time1 = MPI_Wtime();
+    H5ESwait(es_id_g, H5ES_WAIT_FOREVER, &num_in_progress, &op_failed);
+ //   MPI_Barrier(MPI_COMM_WORLD);
+    double time2 = MPI_Wtime();
+    printf("H5ESwait Time:     %.10lf\n", time2 - time1);
+
     free(data);
     H5Dclose(dset_id);
     H5Sclose(filespace);
     H5Sclose(memspace);
     H5Pclose(plist_id);
     H5Fclose(file_id);
- 
     MPI_Finalize();
 
     return 0;
