@@ -6,8 +6,8 @@
 #include "stdlib.h"
 #include "timer.h"
 
-#define H5FILE_NAME     "SDS.h5"
-#define DSET_NAME "data"
+#define H5FILE_NAME "SDS.h5"
+#define DSET_NAME   "data"
 #define NDSETS 9
 
 int
@@ -24,13 +24,10 @@ main (int argc, char **argv)
     hsize_t	offset[1];
     hid_t	plist_id;                 /* property list identifier */
     int         i;
-    herr_t	status;
     char        dset_name[12];
-    double      write_time;
-    
+    double      write_time, read_time;
 
-    hsize_t NX; /* dataset dimensions */
-    hsize_t TotSize = 1024; //131072;
+    hsize_t TotSize = 16777216;
 
     /*
      * MPI variables
@@ -52,6 +49,13 @@ main (int argc, char **argv)
     }      
     
     dimsf[0] = TotSize;
+    /*
+     *   _   _   _   _   _  
+     *  / \ / \ / \ / \ / \ 
+     * ( W | R | I | T | E )
+     *  \_/ \_/ \_/ \_/ \_/ 
+     *
+     */
 
     if(mpi_rank == 0) {
       /*
@@ -137,7 +141,7 @@ main (int argc, char **argv)
     }
 
     //  printf("proc %d: count NX = %ld \n", mpi_rank, count[0]);
-     // printf("proc %d: offset NX = %ld \n", mpi_rank, offset[0]);
+    // printf("proc %d: offset NX = %ld \n", mpi_rank, offset[0]);
 
     /*
      * Select hyperslab in the file.
@@ -151,43 +155,130 @@ main (int argc, char **argv)
 
     snprintf(dset_name, 12, "%s_%06d",  DSET_NAME, 0);
     dset_id = H5Dopen(file_id, dset_name, H5P_DEFAULT);
-    status = H5Dwrite(dset_id, H5T_NATIVE_INT, memspace, filespace, plist_id, data1);
+    H5Dwrite(dset_id, H5T_NATIVE_INT, memspace, filespace, plist_id, data1);
     H5Dclose(dset_id);
     snprintf(dset_name, 12, "%s_%06d",  DSET_NAME, 1);
     dset_id = H5Dopen(file_id, dset_name, H5P_DEFAULT);
-    status = H5Dwrite(dset_id, H5T_NATIVE_INT, memspace, filespace, plist_id, data2);
+    H5Dwrite(dset_id, H5T_NATIVE_INT, memspace, filespace, plist_id, data2);
     H5Dclose(dset_id);
     snprintf(dset_name, 12, "%s_%06d",  DSET_NAME, 2);
     dset_id = H5Dopen(file_id, dset_name, H5P_DEFAULT);
-    status = H5Dwrite(dset_id, H5T_NATIVE_INT, memspace, filespace, plist_id, data3);
+    H5Dwrite(dset_id, H5T_NATIVE_INT, memspace, filespace, plist_id, data3);
     H5Dclose(dset_id);
     snprintf(dset_name, 12, "%s_%06d",  DSET_NAME, 3);
     dset_id = H5Dopen(file_id, dset_name, H5P_DEFAULT);
-    status = H5Dwrite(dset_id, H5T_NATIVE_INT, memspace, filespace, plist_id, data4);
+    H5Dwrite(dset_id, H5T_NATIVE_INT, memspace, filespace, plist_id, data4);
     H5Dclose(dset_id);
     snprintf(dset_name, 12, "%s_%06d",  DSET_NAME, 4);
     dset_id = H5Dopen(file_id, dset_name, H5P_DEFAULT);
-    status = H5Dwrite(dset_id, H5T_NATIVE_INT, memspace, filespace, plist_id, data5);
+    H5Dwrite(dset_id, H5T_NATIVE_INT, memspace, filespace, plist_id, data5);
     H5Dclose(dset_id);
     snprintf(dset_name, 12, "%s_%06d",  DSET_NAME, 5);
     dset_id = H5Dopen(file_id, dset_name, H5P_DEFAULT);
-    status = H5Dwrite(dset_id, H5T_NATIVE_INT, memspace, filespace, plist_id, data6);
+    H5Dwrite(dset_id, H5T_NATIVE_INT, memspace, filespace, plist_id, data6);
     H5Dclose(dset_id);
     snprintf(dset_name, 12, "%s_%06d",  DSET_NAME, 6);
     dset_id = H5Dopen(file_id, dset_name, H5P_DEFAULT);
-    status = H5Dwrite(dset_id, H5T_NATIVE_INT, memspace, filespace, plist_id, data7);
+    H5Dwrite(dset_id, H5T_NATIVE_INT, memspace, filespace, plist_id, data7);
     H5Dclose(dset_id);
     snprintf(dset_name, 12, "%s_%06d",  DSET_NAME, 7);
     dset_id = H5Dopen(file_id, dset_name, H5P_DEFAULT);
-    status = H5Dwrite(dset_id, H5T_NATIVE_INT, memspace, filespace, plist_id, data8);
+    H5Dwrite(dset_id, H5T_NATIVE_INT, memspace, filespace, plist_id, data8);
     H5Dclose(dset_id);
     snprintf(dset_name, 12, "%s_%06d",  DSET_NAME, 8);
     dset_id = H5Dopen(file_id, dset_name, H5P_DEFAULT);
-    status = H5Dwrite(dset_id, H5T_NATIVE_INT, memspace, filespace, plist_id, data9);
+    H5Dwrite(dset_id, H5T_NATIVE_INT, memspace, filespace, plist_id, data9);
     H5Dclose(dset_id);
 
     timer_tock(&write_time);
     timer_collectprintstats(write_time, comm, 0, "Time for H5Dwrite to complete");
+
+    /*
+     * Close/release resources.
+     */
+    H5Pclose(plist_id);
+    H5Sclose(memspace);
+    H5Sclose(filespace);
+    H5Fclose(file_id);
+
+    /*
+     *   _   _   _   _  
+     *  / \ / \ / \ / \ 
+     * ( R | E | A | D )
+     *  \_/ \_/ \_/ \_/ 
+     */
+
+    plist_id = H5Pcreate(H5P_FILE_ACCESS);
+    H5Pset_fapl_mpio(plist_id, comm, info);
+
+    /*
+     * Create a new file collectively and release property list identifier.
+     */
+    file_id = H5Fopen(H5FILE_NAME, H5F_ACC_RDONLY, plist_id);
+    H5Pclose(plist_id);
+
+    /*
+     * Create the dataspace for the dataset.
+     */
+    filespace = H5Screate_simple(1, dimsf, NULL);
+
+    /*
+     * Each process defines dataset in memory and writes it to the hyperslab
+     * in the file.
+     */
+    count[0] =  dimsf[0]/mpi_size; 
+    offset[0] = (mpi_rank)*count[0];
+    memspace = H5Screate_simple(1, count, NULL);
+
+    /*
+     * Select hyperslab in the file.
+     */
+    H5Sselect_hyperslab(filespace, H5S_SELECT_SET, offset, NULL, count, NULL);
+
+    plist_id = H5Pcreate(H5P_DATASET_XFER);
+    //H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
+
+    timer_tick(&read_time, comm, 1);
+
+    snprintf(dset_name, 12, "%s_%06d",  DSET_NAME, 0);
+    dset_id = H5Dopen(file_id, dset_name, H5P_DEFAULT);
+    H5Dread(dset_id, H5T_NATIVE_INT, memspace, filespace, plist_id, data1);
+    H5Dclose(dset_id);
+    snprintf(dset_name, 12, "%s_%06d",  DSET_NAME, 1);
+    dset_id = H5Dopen(file_id, dset_name, H5P_DEFAULT);
+    H5Dread(dset_id, H5T_NATIVE_INT, memspace, filespace, plist_id, data2);
+    H5Dclose(dset_id);
+    snprintf(dset_name, 12, "%s_%06d",  DSET_NAME, 2);
+    dset_id = H5Dopen(file_id, dset_name, H5P_DEFAULT);
+    H5Dread(dset_id, H5T_NATIVE_INT, memspace, filespace, plist_id, data3);
+    H5Dclose(dset_id);
+    snprintf(dset_name, 12, "%s_%06d",  DSET_NAME, 3);
+    dset_id = H5Dopen(file_id, dset_name, H5P_DEFAULT);
+    H5Dread(dset_id, H5T_NATIVE_INT, memspace, filespace, plist_id, data4);
+    H5Dclose(dset_id);
+    snprintf(dset_name, 12, "%s_%06d",  DSET_NAME, 4);
+    dset_id = H5Dopen(file_id, dset_name, H5P_DEFAULT);
+    H5Dread(dset_id, H5T_NATIVE_INT, memspace, filespace, plist_id, data5);
+    H5Dclose(dset_id);
+    snprintf(dset_name, 12, "%s_%06d",  DSET_NAME, 5);
+    dset_id = H5Dopen(file_id, dset_name, H5P_DEFAULT);
+    H5Dread(dset_id, H5T_NATIVE_INT, memspace, filespace, plist_id, data6);
+    H5Dclose(dset_id);
+    snprintf(dset_name, 12, "%s_%06d",  DSET_NAME, 6);
+    dset_id = H5Dopen(file_id, dset_name, H5P_DEFAULT);
+    H5Dread(dset_id, H5T_NATIVE_INT, memspace, filespace, plist_id, data7);
+    H5Dclose(dset_id);
+    snprintf(dset_name, 12, "%s_%06d",  DSET_NAME, 7);
+    dset_id = H5Dopen(file_id, dset_name, H5P_DEFAULT);
+    H5Dread(dset_id, H5T_NATIVE_INT, memspace, filespace, plist_id, data8);
+    H5Dclose(dset_id);
+    snprintf(dset_name, 12, "%s_%06d",  DSET_NAME, 8);
+    dset_id = H5Dopen(file_id, dset_name, H5P_DEFAULT);
+    H5Dread(dset_id, H5T_NATIVE_INT, memspace, filespace, plist_id, data9);
+    H5Dclose(dset_id);
+
+    timer_tock(&read_time);
+    timer_collectprintstats(read_time, comm, 0, "Time for H5Dread  to complete");
 
     free(data1);
     free(data2);

@@ -4,10 +4,11 @@
 
 #include "hdf5.h"
 #include "stdlib.h"
+#include "string.h"
 #include "timer.h"
 
-#define H5FILE_NAME     "SDS_cmpd.h5"
-#define DSET_NAME "data"
+#define H5FILE_NAME "SDS_cmpd.h5"
+#define DSET_NAME   "data"
 #define NDSETS 9
 
 int
@@ -23,13 +24,11 @@ main (int argc, char **argv)
     hsize_t	offset[1];
     hid_t	plist_id;                 /* property list identifier */
     int         i;
-    herr_t	status;
     char        dset_name[12];
-    double      write_time;
+    double      write_time, read_time;
     hid_t       filetype;
     
-    hsize_t NX; /* dataset dimensions */
-    hsize_t TotSize = 1024; //131072;
+    hsize_t TotSize = 16777216;
 
     typedef struct { 
         int data1;
@@ -44,6 +43,7 @@ main (int argc, char **argv)
     } data_t;
 
     data_t *data;
+    int write, read;
 
     /*
      * MPI variables
@@ -62,11 +62,25 @@ main (int argc, char **argv)
     if( TotSize%mpi_size != 0 ) {
       if(mpi_rank == 0) printf("The program assumes TotSize is divisible by the number of ranks, stopping...\n");
       MPI_Abort(comm,1);
-    }      
-    
+    }
+
+    write = 0;
+    read  = 0;
+
+    if (argc==2){
+      if(strcmp(argv[1],"-w")==0) {
+        write=1;
+      } else if(strcmp(argv[1],"-r")==0) {
+        read=1;
+      }
+    } else {
+      write=1;
+      read=1;
+    }
+
     dimsf[0] = TotSize;
 
-    filetype = H5Tcreate (H5T_COMPOUND, 9*sizeof(data_t));
+    filetype = H5Tcreate (H5T_COMPOUND, sizeof(data_t));
     
     size_t offst=0;
     for (i=0; i < NDSETS; i++) {
@@ -74,47 +88,70 @@ main (int argc, char **argv)
       H5Tinsert (filetype, dset_name, offst, H5T_NATIVE_INT);
       offst += sizeof(int);
     }
-    
-    if(mpi_rank == 0) {
-      /*
-       * Set up file access property list with parallel I/O access
-       */
+    /*
+     *   _   _   _   _   _  
+     *  / \ / \ / \ / \ / \ 
+     * ( W | R | I | T | E )
+     *  \_/ \_/ \_/ \_/ \_/ 
+     *
+     */
+    if(write ==1) {
+      if(mpi_rank == 0) {
+        /*
+         * Set up file access property list with parallel I/O access
+         */
+        plist_id = H5Pcreate(H5P_FILE_ACCESS);
+        H5Pset_libver_bounds(plist_id, H5F_LIBVER_LATEST, H5F_LIBVER_LATEST);
+        hid_t dcpl_id = H5Pcreate(H5P_DATASET_CREATE);
+        H5Pset_alloc_time(dcpl_id, H5D_ALLOC_TIME_EARLY);
+        H5Pset_fill_time(dcpl_id, H5D_FILL_TIME_NEVER);
+        
+        /*
+         * Create a new file collectively and release property list identifier.
+         */
+        file_id = H5Fcreate(H5FILE_NAME, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id);
+        H5Pclose(plist_id);
+        
+        /*
+         * Create the dataspace for the dataset.
+         */
+        filespace = H5Screate_simple(1, dimsf, NULL);
+        
+        /*
+         * Create the dataset with default properties and close filespace.
+         */
+        dset_id = H5Dcreate(file_id, DSET_NAME, filetype, filespace, H5P_DEFAULT, dcpl_id, H5P_DEFAULT);
+        
+        H5Dclose(dset_id);
+        H5Sclose(filespace);
+        H5Fclose(file_id);
+        H5Pclose(dcpl_id);
+      }
+      
+      MPI_Barrier(comm);
+      
       plist_id = H5Pcreate(H5P_FILE_ACCESS);
-      H5Pset_libver_bounds(plist_id, H5F_LIBVER_LATEST, H5F_LIBVER_LATEST);
-      hid_t dcpl_id = H5Pcreate(H5P_DATASET_CREATE);
-      H5Pset_alloc_time(dcpl_id, H5D_ALLOC_TIME_EARLY);
-      H5Pset_fill_time(dcpl_id, H5D_FILL_TIME_NEVER);
+      H5Pset_fapl_mpio(plist_id, comm, info);
 
       /*
        * Create a new file collectively and release property list identifier.
        */
-      file_id = H5Fcreate(H5FILE_NAME, H5F_ACC_TRUNC, H5P_DEFAULT, plist_id);
+      file_id = H5Fopen(H5FILE_NAME, H5F_ACC_RDWR, plist_id);
       H5Pclose(plist_id);
 
       /*
-       * Create the dataspace for the dataset.
+       * Each process defines dataset in memory and writes it to the hyperslab
+       * in the file.
        */
-      filespace = H5Screate_simple(1, dimsf, NULL);
-      
+      count[0]  = dimsf[0]/mpi_size;
+      offset[0] = mpi_rank*count[0];
+      memspace  = H5Screate_simple(1, count, NULL);
+
       /*
-       * Create the dataset with default properties and close filespace.
+       * Initialize data buffer
        */
-      dset_id = H5Dcreate(file_id, DSET_NAME, filetype, filespace, H5P_DEFAULT, dcpl_id, H5P_DEFAULT);
-
-
-      H5Dclose(dset_id);
-      H5Sclose(filespace);
-      H5Fclose(file_id);
-      H5Pclose(dcpl_id);
-    }
-    
-    MPI_Barrier(comm);
-
-    /*
-     * Initialize data buffer
-     */
-    data = (data_t *) malloc(sizeof(data_t)*count[0]);
-    for (i=0; i < count[0]; i++) {
+      data = (data_t *) malloc(sizeof(data_t)*count[0]);
+      for (i=0; i < count[0]; i++) {
         data[i].data1 = mpi_rank+10;
         data[i].data2 = mpi_rank+10;
         data[i].data3 = mpi_rank+10;
@@ -124,58 +161,100 @@ main (int argc, char **argv)
         data[i].data7 = mpi_rank+10;
         data[i].data8 = mpi_rank+10;
         data[i].data9 = mpi_rank+10;
+      }
+
+      // printf("proc %d: count NX = %ld \n", mpi_rank, count[0]);
+      // printf("proc %d: offset NX = %ld \n", mpi_rank, offset[0]);
+
+      dset_id = H5Dopen(file_id, DSET_NAME, H5P_DEFAULT);
+      filespace = H5Dget_space(dset_id);
+      
+      /*
+       * Select hyperslab in the file.
+       */
+      H5Sselect_hyperslab(filespace, H5S_SELECT_SET, offset, NULL, count, NULL);
+      
+      timer_tick(&write_time, comm, 1);
+      
+      plist_id = H5Pcreate(H5P_DATASET_XFER);
+      
+      // H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
+      
+      H5Dwrite(dset_id, filetype, memspace, filespace, plist_id, data);
+      
+      H5Pclose(plist_id);
+      H5Dclose(dset_id);
+      
+      timer_tock(&write_time);
+      timer_collectprintstats(write_time, comm, 0, "Time for H5Dwrite to complete");
+      
+      /*
+       * Close/release resources.
+       */
+      //   H5Tclose(filetype);
+      H5Sclose(memspace);
+      H5Sclose(filespace);
+      H5Fclose(file_id);
+      free(data);
     }
 
-    plist_id = H5Pcreate(H5P_FILE_ACCESS);
-    H5Pset_fapl_mpio(plist_id, comm, info);
-
     /*
-     * Create a new file collectively and release property list identifier.
+     *   _   _   _   _  
+     *  / \ / \ / \ / \ 
+     * ( R | E | A | D )
+     *  \_/ \_/ \_/ \_/ 
      */
-    file_id = H5Fopen(H5FILE_NAME, H5F_ACC_RDWR, plist_id);
-    H5Pclose(plist_id);
 
-    /*
-     * Each process defines dataset in memory and writes it to the hyperslab
-     * in the file.
-     */
-    count[0] =  dimsf[0]/mpi_size; 
-    offset[0] = (mpi_rank)*count[0];
-    memspace = H5Screate_simple(1, count, NULL);
+    if( read == 1) {
+      plist_id = H5Pcreate(H5P_FILE_ACCESS);
+      H5Pset_fapl_mpio(plist_id, comm, info);
+      
+      /*
+       * Create a new file collectively and release property list identifier.
+       */
+      file_id = H5Fopen(H5FILE_NAME, H5F_ACC_RDWR, plist_id);
+      H5Pclose(plist_id);
+      /*
+       * Each process defines dataset in memory and writes it to the hyperslab
+       * in the file.
+       */
+      count[0] =  dimsf[0]/mpi_size; 
+      offset[0] = (mpi_rank)*count[0];
+      memspace = H5Screate_simple(1, count, NULL);
 
-    //  printf("proc %d: count NX = %ld \n", mpi_rank, count[0]);
-    // printf("proc %d: offset NX = %ld \n", mpi_rank, offset[0]);
+      dset_id = H5Dopen(file_id, DSET_NAME, H5P_DEFAULT);
+      filespace = H5Dget_space (dset_id);
 
-    dset_id = H5Dopen(file_id, DSET_NAME, H5P_DEFAULT);
-    filespace = H5Dget_space (dset_id);
+      data = (data_t *) malloc(sizeof(data_t)*count[0]);
 
-    /*
-     * Select hyperslab in the file.
-     */
-    H5Sselect_hyperslab(filespace, H5S_SELECT_SET, offset, NULL, count, NULL);
+      /*
+       * Select hyperslab in the file.
+       */
+      H5Sselect_hyperslab(filespace, H5S_SELECT_SET, offset, NULL, count, NULL);
 
-    timer_tick(&write_time, comm, 1);
+      timer_tick(&read_time, comm, 1);
 
-    plist_id = H5Pcreate(H5P_DATASET_XFER);
+      plist_id = H5Pcreate(H5P_DATASET_XFER);
 
-    //H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
+      //H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
 
-    status = H5Dwrite(dset_id, filetype, memspace, filespace, plist_id, data);
+      H5Dread(dset_id, filetype, memspace, filespace, plist_id, data);
 
-    H5Pclose(plist_id);
-    H5Dclose(dset_id);
+      H5Pclose(plist_id);
+      H5Dclose(dset_id);
 
-    timer_tock(&write_time);
-    timer_collectprintstats(write_time, comm, 0, "Time for H5Dwrite to complete");
+      timer_tock(&read_time);
+      timer_collectprintstats(read_time, comm, 0, "Time for H5Dread  to complete");
 
-    free(data);
-    /*
-     * Close/release resources.
-     */
-    H5Tclose(filetype);
-    H5Sclose(memspace);
-    H5Sclose(filespace);
-    H5Fclose(file_id);
+      /*
+       * Close/release resources.
+       */
+      H5Tclose(filetype);
+      H5Sclose(memspace);
+      H5Sclose(filespace);
+      H5Fclose(file_id);
+      free(data);
+    }
 
     MPI_Finalize();
 
