@@ -179,7 +179,8 @@ main (int argc, char **argv)
     H5Sselect_hyperslab(filespace, H5S_SELECT_SET, offset, NULL, count, NULL);
 
     plist_id = H5Pcreate(H5P_DATASET_XFER);
-    //H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
+    if(collective == 1)
+      H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
 
     timer_tick(&write_time, comm, 1);
 
@@ -266,7 +267,8 @@ main (int argc, char **argv)
     H5Sselect_hyperslab(filespace, H5S_SELECT_SET, offset, NULL, count, NULL);
 
     plist_id = H5Pcreate(H5P_DATASET_XFER);
-    //H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
+    if(collective == 1)
+      H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
 
     timer_tick(&read_time, comm, 1);
 

@@ -193,7 +193,8 @@ main (int argc, char **argv)
       
       plist_id = H5Pcreate(H5P_DATASET_XFER);
       
-      // H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
+      if(collective == 1)
+        H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
       
       H5Dwrite(dset_id, filetype, memspace, filespace, plist_id, data);
       
@@ -251,7 +252,8 @@ main (int argc, char **argv)
 
       plist_id = H5Pcreate(H5P_DATASET_XFER);
 
-      //H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
+      if(collective == 1)
+        H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
 
       H5Dread(dset_id, filetype, memspace, filespace, plist_id, data);
 
