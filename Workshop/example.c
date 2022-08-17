@@ -4,11 +4,13 @@
 
 #include "hdf5.h"
 #include "stdlib.h"
+#include "string.h"
 #include "timer.h"
 
 #define H5FILE_NAME "SDS.h5"
 #define DSET_NAME   "data"
 #define NDSETS 9
+#define StringBool(x) ((x) ? "True" : "False")
 
 int
 main (int argc, char **argv)
@@ -26,6 +28,7 @@ main (int argc, char **argv)
     int         i;
     char        dset_name[12];
     double      write_time, read_time;
+    int write, read, collective;
 
     hsize_t TotSize = 16777216;
 
@@ -43,20 +46,47 @@ main (int argc, char **argv)
     MPI_Comm_size(comm, &mpi_size);
     MPI_Comm_rank(comm, &mpi_rank);
 
+    write = 0;
+    read  = 0;
+    collective = 0;
+    for (i = 1; i < argc; i++) {
+      if(strcmp(argv[i],"-w")==0) {
+        write=1;
+      } else if(strcmp(argv[i],"-r")==0) {
+        read=1;
+      } else if(strcmp(argv[i],"-c")==0) {
+        collective=1;
+      } else if(strcmp(argv[i],"-n")==0) {
+        i++;
+        TotSize=atoi(argv[i]);
+      } 
+    }
+    if(mpi_rank == 0) {
+      printf("SUMMARY\n-------\n");
+      printf(" WRITE: %s\n", StringBool(write));
+      printf(" READ: %s\n", StringBool(read));
+      printf(" COLLECTIVE: %s\n", StringBool(collective));
+      printf(" NUMEL: %ld\n",TotSize);
+    }
+                       
+    if( write == 0 && read == 0) {
+      write=1;
+      read=1;
+    }
+    
     if( TotSize%mpi_size != 0 ) {
       if(mpi_rank == 0) printf("The program assumes TotSize is divisible by the number of ranks, stopping...\n");
       MPI_Abort(comm,1);
-    }      
+    }
     
     dimsf[0] = TotSize;
     /*
-     *   _   _   _   _   _  
-     *  / \ / \ / \ / \ / \ 
+     *   _   _   _   _   _
+     *  / \ / \ / \ / \ / \
      * ( W | R | I | T | E )
-     *  \_/ \_/ \_/ \_/ \_/ 
+     *  \_/ \_/ \_/ \_/ \_/
      *
      */
-
     if(mpi_rank == 0) {
       /*
        * Set up file access property list with parallel I/O access
@@ -202,10 +232,10 @@ main (int argc, char **argv)
     H5Fclose(file_id);
 
     /*
-     *   _   _   _   _  
-     *  / \ / \ / \ / \ 
+     *   _   _   _   _
+     *  / \ / \ / \ / \
      * ( R | E | A | D )
-     *  \_/ \_/ \_/ \_/ 
+     *  \_/ \_/ \_/ \_/
      */
 
     plist_id = H5Pcreate(H5P_FILE_ACCESS);

@@ -1,7 +1,7 @@
 HDF5_DIR=$(HOME)/packages/hdf5/build/hdf5/bin
 
 CC=$(HDF5_DIR)/h5pcc
-CFLAGS=-O3 -Wall
+CFLAGS=-O3
 
 all: example example_cmpd
 

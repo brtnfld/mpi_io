@@ -10,6 +10,7 @@
 #define H5FILE_NAME "SDS_cmpd.h5"
 #define DSET_NAME   "data"
 #define NDSETS 9
+#define StringBool(x) ((x) ? "True" : "False")
 
 int
 main (int argc, char **argv)
@@ -43,7 +44,7 @@ main (int argc, char **argv)
     } data_t;
 
     data_t *data;
-    int write, read;
+    int write, read, collective;
 
     /*
      * MPI variables
@@ -59,23 +60,37 @@ main (int argc, char **argv)
     MPI_Comm_size(comm, &mpi_size);
     MPI_Comm_rank(comm, &mpi_rank);
 
+    write = 0;
+    read  = 0;
+    collective = 0;
+    for (i = 1; i < argc; i++) {
+      if(strcmp(argv[i],"-w")==0) {
+        write=1;
+      } else if(strcmp(argv[i],"-r")==0) {
+        read=1;
+      } else if(strcmp(argv[i],"-c")==0) {
+        collective=1;
+      } else if(strcmp(argv[i],"-n")==0) {
+        i++;
+        TotSize=atoi(argv[i]);
+      } 
+    }
+    if(mpi_rank == 0) {
+      printf("SUMMARY\n-------\n");
+      printf(" WRITE: %s\n", StringBool(write));
+      printf(" READ: %s\n", StringBool(read));
+      printf(" COLLECTIVE: %s\n", StringBool(collective));
+      printf(" NUMEL: %ld\n",TotSize);
+    }
+                       
+    if( write == 0 && read == 0) {
+      write=1;
+      read=1;
+    }
+    
     if( TotSize%mpi_size != 0 ) {
       if(mpi_rank == 0) printf("The program assumes TotSize is divisible by the number of ranks, stopping...\n");
       MPI_Abort(comm,1);
-    }
-
-    write = 0;
-    read  = 0;
-
-    if (argc==2){
-      if(strcmp(argv[1],"-w")==0) {
-        write=1;
-      } else if(strcmp(argv[1],"-r")==0) {
-        read=1;
-      }
-    } else {
-      write=1;
-      read=1;
     }
 
     dimsf[0] = TotSize;
@@ -89,10 +104,10 @@ main (int argc, char **argv)
       offst += sizeof(int);
     }
     /*
-     *   _   _   _   _   _  
-     *  / \ / \ / \ / \ / \ 
+     *   _   _   _   _   _
+     *  / \ / \ / \ / \ / \
      * ( W | R | I | T | E )
-     *  \_/ \_/ \_/ \_/ \_/ 
+     *  \_/ \_/ \_/ \_/ \_/
      *
      */
     if(write ==1) {
@@ -199,10 +214,10 @@ main (int argc, char **argv)
     }
 
     /*
-     *   _   _   _   _  
-     *  / \ / \ / \ / \ 
+     *   _   _   _   _
+     *  / \ / \ / \ / \
      * ( R | E | A | D )
-     *  \_/ \_/ \_/ \_/ 
+     *  \_/ \_/ \_/ \_/
      */
 
     if( read == 1) {
