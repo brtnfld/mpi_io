@@ -61,17 +61,18 @@ main (int argc, char **argv)
         TotSize=atoi(argv[i]);
       } 
     }
+                       
+    if( write == 0 && read == 0) {
+      write=1;
+      read=1;
+    }
+
     if(mpi_rank == 0) {
       printf("SUMMARY\n-------\n");
       printf(" WRITE: %s\n", StringBool(write));
       printf(" READ: %s\n", StringBool(read));
       printf(" COLLECTIVE: %s\n", StringBool(collective));
       printf(" NUMEL: %ld\n",TotSize);
-    }
-                       
-    if( write == 0 && read == 0) {
-      write=1;
-      read=1;
     }
     
     if( TotSize%mpi_size != 0 ) {
