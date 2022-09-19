@@ -267,6 +267,12 @@ main (int argc, char **argv)
       free(rbufs);
 
     }
+
+    free(dsets_ids);
+    free(mem_type_ids);
+    free(mem_space_ids);
+    free(file_space_ids);
+
     MPI_Finalize();
 
     return 0;
