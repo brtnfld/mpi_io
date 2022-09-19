@@ -263,6 +263,9 @@ main (int argc, char **argv)
       }
 #endif
 
+      free(ptr_r);
+      free(rbufs);
+
     }
     MPI_Finalize();
 
