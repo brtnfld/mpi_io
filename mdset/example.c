@@ -46,7 +46,7 @@ main (int argc, char **argv)
     double      write_time, read_time;
     int write, read, collective;
 
-    hsize_t ndsets=4;
+    hsize_t ndsets=1000;
     hsize_t nelem = 1024;
 
     /*
