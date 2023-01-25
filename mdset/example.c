@@ -11,6 +11,15 @@
 #define DSET_NAME   "data"
 #define StringBool(x) ((x) ? "True" : "False")
 
+#define RED   "\x1B[31m"
+#define GRN   "\x1B[32m"
+#define YEL   "\x1B[33m"
+#define BLU   "\x1B[34m"
+#define MAG   "\x1B[35m"
+#define CYN   "\x1B[36m"
+#define WHT   "\x1B[37m"
+#define RESET "\x1B[0m"
+
 int
 main (int argc, char **argv)
 {
@@ -79,12 +88,14 @@ main (int argc, char **argv)
     }
 
     if(mpi_rank == 0) {
+      printf(CYN);
       printf("SUMMARY\n-------\n");
       printf(" WRITE: %s\n", StringBool(write));
       printf(" READ: %s\n", StringBool(read));
       printf(" COLLECTIVE: %s\n", StringBool(collective));
       printf(" NUMEL: %ld\n",nelem);
-      printf(" NUMDSETS: %ld\n",ndsets);
+      printf(" NUMDSETS: %ld\n\n",ndsets);
+      printf(RESET);
     }
     
     if( nelem%mpi_size != 0 ) {
