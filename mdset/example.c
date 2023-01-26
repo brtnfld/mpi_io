@@ -157,7 +157,7 @@ main (int argc, char **argv)
 
       size_t j=0;
       for (i=0; i < ndsets; i++) {
-        snprintf(dset_name, 14, "%s_%08d", DSET_NAME, i);
+        snprintf(dset_name, 14, "%s_%08zu", DSET_NAME, i);
 
         file_space_ids[i] = H5Screate_simple(1, dimsf, NULL);
         mem_type_ids[i] = H5T_NATIVE_DOUBLE;
@@ -239,7 +239,7 @@ main (int argc, char **argv)
 
       size_t j=0;
       for (i=0; i < ndsets; i++) {
-        snprintf(dset_name, 14, "%s_%08d", DSET_NAME, i);
+        snprintf(dset_name, 14, "%s_%08zu", DSET_NAME, i);
 
         file_space_ids[i] = H5Screate_simple(1, dimsf, NULL);
         mem_type_ids[i] = H5T_NATIVE_DOUBLE;
