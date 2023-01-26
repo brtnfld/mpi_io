@@ -137,6 +137,11 @@ main (int argc, char **argv)
       H5Pset_libver_bounds(plist_id, H5F_LIBVER_LATEST, H5F_LIBVER_LATEST);
       hid_t dcpl_id = H5Pcreate(H5P_DATASET_CREATE);
       H5Pset_fill_time(dcpl_id, H5D_FILL_TIME_NEVER);
+      /* OPTIMIZE */
+      H5Pset_all_coll_metadata_ops(plist_id, 1);
+      H5Pset_coll_metadata_write(plist_id, 1);
+      H5Pset_alignment(plist_id, 0, 16777216);
+
       H5Pset_fapl_mpio(plist_id, comm, info);
         
       /*
@@ -223,6 +228,10 @@ main (int argc, char **argv)
 
       plist_id = H5Pcreate(H5P_FILE_ACCESS);
       H5Pset_fapl_mpio(plist_id, comm, info);
+
+      /* OPTIMIZE */
+      H5Pset_all_coll_metadata_ops(plist_id, 1);
+      H5Pset_coll_metadata_write(plist_id, 1);
 
       /*
        * Create a new file collectively and release property list identifier.
