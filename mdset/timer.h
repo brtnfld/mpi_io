@@ -90,14 +90,19 @@ void timer_printstats(char *prefix, struct timer_statinfo *stats)
  *    destrank: the rank to which to collect stats
  *    prefix: string to print in front of stats, use "" for no string */
 
-void timer_collectprintstats(double timer, MPI_Comm comm, int destrank, char *prefix)
+void timer_collectprintstats(double timer, MPI_Comm comm, int destrank, char *prefix,
+                             FILE *fptr, int mpi_size, hsize_t ndsets, int collective)
 {
     int rank;
     struct timer_statinfo stats;
 
     MPI_Comm_rank(comm, &rank);
     timer_collectstats(timer, comm, destrank, &stats);
-    if(rank == destrank)
+    if(rank == destrank) {
         timer_printstats(prefix, &stats);
+        if(fptr != NULL){
+          fprintf(fptr,"%d %zu %d %.2f ",mpi_size, ndsets, collective, stats.mean);
+        }
+    }
 }
 

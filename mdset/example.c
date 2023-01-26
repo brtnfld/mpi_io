@@ -49,6 +49,10 @@ main (int argc, char **argv)
     hsize_t ndsets=1000;
     hsize_t nelem = 1024;
 
+    char filename[80];
+
+    FILE *fptr=NULL;
+
     /*
      * MPI variables
      */
@@ -88,7 +92,7 @@ main (int argc, char **argv)
     }
 
     if(mpi_rank == 0) {
-      printf(CYN);
+      printf(MAG);
       printf("SUMMARY\n-------\n");
       printf(" WRITE: %s\n", StringBool(write));
       printf(" READ: %s\n", StringBool(read));
@@ -96,6 +100,12 @@ main (int argc, char **argv)
       printf(" NUMEL: %ld\n",nelem);
       printf(" NUMDSETS: %ld\n\n",ndsets);
       printf(RESET);
+
+      sprintf(filename, "ex_np_%d_nd_%zu_c_%d.dat", mpi_size, ndsets, collective);
+
+      fptr = fopen(filename,"a");
+      // fprintf(fptr,"# WRITE (MD,SD) , READ (MD,SD) \n",);
+
     }
     
     if( nelem%mpi_size != 0 ) {
@@ -168,14 +178,14 @@ main (int argc, char **argv)
       timer_tick(&write_time, comm, 1);
       H5Dwrite_multi(ndsets, dsets_ids, mem_type_ids, mem_space_ids, file_space_ids, dxpl_id, ptr);
       timer_tock(&write_time);
-      timer_collectprintstats(write_time, comm, 0, "Time for H5Dwrite_multi to complete:");
+      timer_collectprintstats(write_time, comm, 0, "Time for H5Dwrite_multi to complete:", fptr, mpi_size, ndsets, collective);
 
       timer_tick(&write_time, comm, 1);
       for (i=0; i < ndsets; i++) {
         H5Dwrite(dsets_ids[i], mem_type_ids[i], mem_space_ids[i], file_space_ids[i], dxpl_id, ptr[i]);
       }
       timer_tock(&write_time);
-      timer_collectprintstats(write_time, comm, 0, "Time for H5Dwrite to complete:");
+      timer_collectprintstats(write_time, comm, 0, "Time for H5Dwrite to complete:", fptr, mpi_size, ndsets, collective);
 
 
       for (i=0; i < ndsets; i++) {
@@ -193,6 +203,13 @@ main (int argc, char **argv)
       free(ptr);
       free(wbufs);
 
+    }
+    else {
+      if(mpi_rank == 0) {
+        if(fptr != NULL){
+          fprintf(fptr,"%d %zu %d %s ",mpi_size, ndsets, collective, "*");
+        }
+      }
     }
 
     /*
@@ -243,7 +260,7 @@ main (int argc, char **argv)
       timer_tick(&read_time, comm, 1);
       H5Dread_multi(ndsets, dsets_ids, mem_type_ids, mem_space_ids, file_space_ids, dxpl_id, ptr_r);
       timer_tock(&read_time);
-      timer_collectprintstats(read_time, comm, 0, "Time for H5Dread_multi to complete:");
+      timer_collectprintstats(read_time, comm, 0, "Time for H5Dread_multi to complete:", fptr, mpi_size, ndsets, collective);
 
       
       timer_tick(&read_time, comm, 1);
@@ -251,7 +268,7 @@ main (int argc, char **argv)
         H5Dread(dsets_ids[i], mem_type_ids[i], mem_space_ids[i], file_space_ids[i], dxpl_id, ptr_r[i]);
       }
       timer_tock(&read_time);
-      timer_collectprintstats(read_time, comm, 0, "Time for H5Dread to complete:");
+      timer_collectprintstats(read_time, comm, 0, "Time for H5Dread to complete:", fptr, mpi_size, ndsets, collective);
 
 
       for (i=0; i < ndsets; i++) {
@@ -277,7 +294,22 @@ main (int argc, char **argv)
       free(ptr_r);
       free(rbufs);
 
+    } else {
+      if(mpi_rank == 0) {
+        if(fptr != NULL){
+          fprintf(fptr,"%d %zu %d %s ",mpi_size, ndsets, collective, "*");
+        }
+      }
     }
+
+    if(mpi_rank == 0) {
+      if(fptr != NULL){
+        fprintf(fptr,"\n");
+        fclose(fptr);
+      }
+
+    }
+
 
     free(dsets_ids);
     free(mem_type_ids);

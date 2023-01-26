@@ -1,5 +1,5 @@
 HDF5_DIR=$(HOME)/packages/hdf5/build/hdf5
-ifneq ($(UNAME),"")
+ifneq ($(UNAME),)
   HDF5_DIR=$(HOME)/packages/hdf5/build.$(UNAME)/hdf5
 endif
 
